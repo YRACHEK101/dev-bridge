@@ -1,4 +1,4 @@
-import type { Server } from "node:http";
+import type { Server, IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import express, { type Express } from "express";
 import { createProxyMiddleware, type RequestHandler as ProxyHandler } from "http-proxy-middleware";
@@ -14,11 +14,16 @@ export interface ProxyServerOptions {
   upstreamHost?: string;
   /** Reuse an existing tracker (so the dashboard/logs can subscribe first). */
   tracker?: RequestTracker;
+  /**
+   * A path prefix that must NOT be proxied (served by the dashboard instead).
+   * When set, requests/upgrades under it fall through for another handler.
+   */
+  reservedPrefix?: string;
 }
 
 /** For the frontend proxy we may need to forward WebSocket upgrades (HMR). */
 type UpgradeCapable = ProxyHandler & {
-  upgrade?: (req: import("node:http").IncomingMessage, socket: Duplex, head: Buffer) => void;
+  upgrade?: (req: IncomingMessage, socket: Duplex, head: Buffer) => void;
 };
 
 /**
@@ -30,11 +35,13 @@ export class ProxyServer {
   readonly app: Express;
   readonly tracker: RequestTracker;
   readonly proxyPort: number;
+  private readonly reservedPrefix?: string;
   private readonly frontendProxy: UpgradeCapable;
-  private server?: Server;
+  private httpServer?: Server;
 
   constructor(options: ProxyServerOptions) {
     this.proxyPort = options.proxyPort;
+    this.reservedPrefix = options.reservedPrefix;
     this.tracker = options.tracker ?? new RequestTracker({ apiPrefix: options.apiPrefix });
 
     const host = options.upstreamHost ?? "127.0.0.1";
@@ -49,17 +56,37 @@ export class ProxyServer {
       target: frontendTarget,
       changeOrigin: true,
       ws: true, // forward HMR / websocket upgrades to the frontend
+      // Never proxy the reserved dashboard path. Without this, hpm's WS
+      // auto-subscription would hijack the dashboard's own /_devbridge/ws
+      // upgrade and pipe it to the (non-WS) frontend server.
+      pathFilter: (pathname: string) => !this.isReserved(pathname),
     }) as UpgradeCapable;
 
+    const track = this.tracker.middleware();
+
     this.app = express();
-    // Measure first, then route. No body parser: we must stream bodies untouched.
-    this.app.use(this.tracker.middleware());
+    // Measure first, then route. Reserved paths (dashboard) are neither tracked
+    // nor proxied — they fall through to routes registered later.
+    this.app.use((req, res, next) =>
+      this.isReserved(req.path) ? next() : track(req, res, next),
+    );
     this.app.use((req, res, next) => {
+      if (this.isReserved(req.path)) return next();
       if (this.tracker.targetFor(req.path) === "backend") {
         return backendProxy(req, res, next);
       }
       return this.frontendProxy(req, res, next);
     });
+  }
+
+  private isReserved(path: string): boolean {
+    const prefix = this.reservedPrefix;
+    return !!prefix && (path === prefix || path.startsWith(prefix + "/"));
+  }
+
+  /** The underlying http.Server, available after listen(). */
+  get server(): Server | undefined {
+    return this.httpServer;
   }
 
   /** Start listening. Resolves once bound; rejects on bind error (e.g. EADDRINUSE). */
@@ -72,11 +99,12 @@ export class ProxyServer {
       };
       const onListening = () => {
         server.removeListener("error", onError);
-        // Forward WebSocket upgrades (Vite/Next HMR) to the frontend dev server.
-        if (typeof this.frontendProxy.upgrade === "function") {
-          server.on("upgrade", this.frontendProxy.upgrade);
-        }
-        this.server = server;
+        server.on("upgrade", (req, socket, head) => {
+          // Reserved (dashboard) upgrades are handled by another listener.
+          if (this.isReserved(pathnameOf(req.url))) return;
+          this.frontendProxy.upgrade?.(req, socket, head);
+        });
+        this.httpServer = server;
         resolve(server);
       };
       server.once("error", onError);
@@ -87,9 +115,9 @@ export class ProxyServer {
   /** Stop listening and free the port. */
   close(): Promise<void> {
     return new Promise((resolve) => {
-      if (!this.server) return resolve();
-      this.server.close(() => resolve());
-      this.server = undefined;
+      if (!this.httpServer) return resolve();
+      this.httpServer.close(() => resolve());
+      this.httpServer = undefined;
     });
   }
 
@@ -97,6 +125,13 @@ export class ProxyServer {
   get url(): string {
     return `http://localhost:${this.proxyPort}`;
   }
+}
+
+/** Path portion of a request URL, without the query string. */
+function pathnameOf(url: string | undefined): string {
+  const raw = url ?? "/";
+  const q = raw.indexOf("?");
+  return q === -1 ? raw : raw.slice(0, q);
 }
 
 export function createProxyServer(options: ProxyServerOptions): ProxyServer {

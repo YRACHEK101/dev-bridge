@@ -5,9 +5,10 @@ import { runInit } from "./config/init.js";
 import { ConfigError } from "./config/loadConfig.js";
 import { PortInUseError } from "./utils/portCheck.js";
 import { readPackageVersion } from "./utils/version.js";
+import { openBrowser } from "./utils/openBrowser.js";
 import type { DevBridgeConfig } from "./config/schema.js";
 
-function printBanner(config: DevBridgeConfig, useProxy: boolean): void {
+function printBanner(config: DevBridgeConfig, useProxy: boolean, dashboardUrl?: string): void {
   const c = chalk;
   const lines: string[] = [
     "",
@@ -15,13 +16,16 @@ function printBanner(config: DevBridgeConfig, useProxy: boolean): void {
     "",
   ];
   if (useProxy) {
-    lines.push(`  ${c.bold("Open")}      ${c.cyan.underline(`http://localhost:${config.proxy.port}`)}`);
+    lines.push(`  ${c.bold("Open")}       ${c.cyan.underline(`http://localhost:${config.proxy.port}`)}`);
+  }
+  if (dashboardUrl) {
+    lines.push(`  ${c.bold("Dashboard")}  ${c.magenta.underline(dashboardUrl)}`);
   }
   lines.push(
-    `  ${c.bold("Frontend")}  ${c.gray(config.frontend.command)}  ${c.gray(`→ :${config.frontend.port}`)}`,
+    `  ${c.bold("Frontend")}   ${c.gray(config.frontend.command)}  ${c.gray(`→ :${config.frontend.port}`)}`,
   );
   lines.push(
-    `  ${c.bold("Backend")}   ${c.gray(config.backend.command)}  ${c.gray(`→ :${config.backend.port}`)}  ${c.gray(`${config.proxy.apiPrefix}/*`)}`,
+    `  ${c.bold("Backend")}    ${c.gray(config.backend.command)}  ${c.gray(`→ :${config.backend.port}`)}  ${c.gray(`${config.proxy.apiPrefix}/*`)}`,
   );
   lines.push("", c.gray("  Press Ctrl+C to stop."), "");
   process.stdout.write(lines.join("\n") + "\n");
@@ -40,6 +44,7 @@ interface StartCliOptions {
   config?: string;
   port?: string;
   proxy?: boolean; // commander sets false when --no-proxy is passed
+  dashboard?: boolean;
 }
 
 async function startAction(opts: StartCliOptions): Promise<void> {
@@ -53,16 +58,28 @@ async function startAction(opts: StartCliOptions): Promise<void> {
     }
   }
 
+  const useProxy = opts.proxy !== false;
+  let wantDashboard = opts.dashboard === true;
+  if (wantDashboard && !useProxy) {
+    process.stderr.write(chalk.yellow("\nThe dashboard needs the proxy; ignoring --dashboard with --no-proxy.\n"));
+    wantDashboard = false;
+  }
+
   let handle: DevBridgeHandle;
   try {
-    handle = await startDevBridge({ configPath: opts.config, port, proxy: opts.proxy });
+    handle = await startDevBridge({ configPath: opts.config, port, proxy: opts.proxy, dashboard: wantDashboard });
   } catch (err) {
     printError(err);
     process.exitCode = 1;
     return;
   }
 
-  printBanner(handle.config, handle.proxy !== undefined);
+  const dashboardUrl = handle.dashboard?.url(handle.config.proxy.port);
+  printBanner(handle.config, handle.proxy !== undefined, dashboardUrl);
+  // Auto-open the dashboard, unless disabled (CI/headless/scripted runs).
+  if (dashboardUrl && !process.env.DEV_BRIDGE_NO_OPEN) {
+    void openBrowser(dashboardUrl);
+  }
 
   let shuttingDown = false;
   const onSignal = (signal: NodeJS.Signals): void => {
@@ -105,6 +122,7 @@ export function buildProgram(): Command {
     .option("-c, --config <path>", "path to dev-bridge.config.json")
     .option("-p, --port <number>", "unified proxy port (overrides config)")
     .option("--no-proxy", "run servers with merged logs but without the proxy")
+    .option("-d, --dashboard", "open a live request-timeline dashboard in the browser")
     .action(startAction);
 
   program

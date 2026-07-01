@@ -4,5 +4,6 @@ export * from "./config/index.js";
 export * from "./process/index.js";
 export * from "./logs/index.js";
 export * from "./proxy/index.js";
+export * from "./dashboard/index.js";
 export * from "./utils/index.js";
 export * from "./runtime.js";
