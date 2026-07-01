@@ -45,10 +45,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-org/dev-bridge.git"
+    "url": "git+https://github.com/YRACHEK101/dev-bridge.git"
   },
+  "bugs": {
+    "url": "https://github.com/YRACHEK101/dev-bridge/issues"
+  },
+  "homepage": "https://github.com/YRACHEK101/dev-bridge#readme",
   "license": "MIT",
-  "author": "",
+  "author": "YRACHEK101 <r.yahia.dev@gmail.com>",
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
@@ -66,6 +70,6 @@
     "supertest": "^7.0.0",
     "tsup": "^8.3.0",
     "typescript": "^5.6.3",
-    "vitest": "^2.1.4"
+    "vitest": "^4.1.9"
   }
 }
