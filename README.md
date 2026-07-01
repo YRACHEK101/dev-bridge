@@ -63,18 +63,24 @@ dev-bridge --dashboard
 }
 ```
 
-| Field                             | Meaning                                                      |
-| --------------------------------- | ------------------------------------------------------------ |
-| `frontend` / `backend` `.command` | shell command that starts the server                         |
-| `frontend` / `backend` `.port`    | the port that server listens on (proxy forwards here)        |
-| `frontend` / `backend` `.cwd`     | working directory for the command (relative to the config)   |
-| `frontend` / `backend` `.name`    | optional log label (defaults: `web` / `api`)                 |
-| `proxy.port`                      | the single unified port you open in the browser              |
-| `proxy.apiPrefix`                 | requests under this path go to the backend (default `/api`)  |
-| `restartOnCrash`                  | auto-restart a server if it exits non-zero (default `false`) |
+| Field                             | Meaning                                                             |
+| --------------------------------- | ------------------------------------------------------------------- |
+| `frontend` / `backend` `.command` | shell command that starts the server                                |
+| `frontend` / `backend` `.port`    | the port that server listens on (proxy forwards here)               |
+| `frontend` / `backend` `.cwd`     | working directory for the command (relative to the config)          |
+| `frontend` / `backend` `.host`    | host the proxy connects to (default `localhost`; reaches IPv4/IPv6) |
+| `frontend` / `backend` `.env`     | extra environment variables for that process (object)               |
+| `frontend` / `backend` `.name`    | optional log label (defaults: `web` / `api`)                        |
+| `proxy.port`                      | the single unified port you open in the browser                     |
+| `proxy.host`                      | interface the proxy binds to (default `127.0.0.1`)                  |
+| `proxy.apiPrefix`                 | requests under this path go to the backend (default `/api`)         |
+| `restartOnCrash`                  | auto-restart a server if it exits non-zero (default `false`)        |
 
-> Your dev servers must actually listen on the `port` you configure — set it in
-> their own config/flags to match (e.g. Vite's `server.port`).
+> **`PORT` is injected.** dev-bridge sets `PORT=<the configured port>` in each
+> server's environment, so servers that read `process.env.PORT` bind the right
+> port automatically. Otherwise, make the server listen on the `port` you
+> configure (e.g. Vite's `server.port`). A per-service `env` value wins over the
+> injected `PORT`.
 
 ## CLI
 
@@ -85,6 +91,7 @@ dev-bridge init [options]
 Start options:
   -c, --config <path>   path to dev-bridge.config.json
   -p, --port <number>   unified proxy port (overrides config)
+  -H, --host <host>     interface to bind (default 127.0.0.1; use 0.0.0.0 for LAN)
   -d, --dashboard       open a live request-timeline dashboard
       --no-proxy        run servers + merged logs without the proxy
       --strict-port     fail if the proxy port is taken (default: auto-pick free)
@@ -130,6 +137,29 @@ node ../bin/dev-bridge.js --dashboard   # or `npx dev-bridge --dashboard`
   `chalk`) are pure ESM, so there is no CommonJS build.
 - The dashboard is served at `/_devbridge` on the unified port; that path is
   reserved (never proxied to your app).
+- **Local by default.** The proxy binds `127.0.0.1`, so your app and dashboard
+  aren't exposed on the network. Use `--host 0.0.0.0` (or `proxy.host`) to allow
+  access from other devices.
+- **IPv4/IPv6.** Upstream hosts default to `localhost` and are reached with Happy
+  Eyeballs, so a server bound to `127.0.0.1` _or_ `::1` works. Force a stack with
+  a service `host` of `127.0.0.1` or `::1`.
+
+## Platform support
+
+Developed and tested on **macOS** and **Linux**, and exercised on **Windows** in
+CI (Node 20 & 22 across all three via GitHub Actions). On POSIX, dev-bridge
+signals the whole process group on shutdown; on Windows it uses `taskkill /T` to
+stop the process tree.
+
+## Development
+
+```bash
+npm install
+npm test          # vitest (unit + integration + e2e)
+npm run lint      # eslint
+npm run typecheck # tsc --noEmit
+npm run build     # tsup -> dist/
+```
 
 ## License
 
