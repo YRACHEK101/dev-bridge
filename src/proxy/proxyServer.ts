@@ -76,9 +76,7 @@ export class ProxyServer {
     this.app = express();
     // Measure first, then route. Reserved paths (dashboard) are neither tracked
     // nor proxied — they fall through to routes registered later.
-    this.app.use((req, res, next) =>
-      this.isReserved(req.path) ? next() : track(req, res, next),
-    );
+    this.app.use((req, res, next) => (this.isReserved(req.path) ? next() : track(req, res, next)));
     this.app.use((req, res, next) => {
       if (this.isReserved(req.path)) return next();
       if (this.tracker.targetFor(req.path) === "backend") {

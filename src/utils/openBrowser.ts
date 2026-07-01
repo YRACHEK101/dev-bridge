@@ -13,8 +13,6 @@ export async function openBrowser(url: string): Promise<void> {
   }
 }
 
-
-
 /** The platform-specific command used to open a URL (exported for testing). */
 export function openCommand(
   url: string,

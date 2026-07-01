@@ -56,22 +56,22 @@ dev-bridge --dashboard
 
 ```json
 {
-  "frontend": { "command": "npm run dev",    "port": 5173, "cwd": "./client" },
-  "backend":  { "command": "npm run server", "port": 5000, "cwd": "./server" },
-  "proxy":    { "port": 4000, "apiPrefix": "/api" },
+  "frontend": { "command": "npm run dev", "port": 5173, "cwd": "./client" },
+  "backend": { "command": "npm run server", "port": 5000, "cwd": "./server" },
+  "proxy": { "port": 4000, "apiPrefix": "/api" },
   "restartOnCrash": false
 }
 ```
 
-| Field | Meaning |
-|---|---|
-| `frontend` / `backend` `.command` | shell command that starts the server |
-| `frontend` / `backend` `.port` | the port that server listens on (proxy forwards here) |
-| `frontend` / `backend` `.cwd` | working directory for the command (relative to the config) |
-| `frontend` / `backend` `.name` | optional log label (defaults: `web` / `api`) |
-| `proxy.port` | the single unified port you open in the browser |
-| `proxy.apiPrefix` | requests under this path go to the backend (default `/api`) |
-| `restartOnCrash` | auto-restart a server if it exits non-zero (default `false`) |
+| Field                             | Meaning                                                      |
+| --------------------------------- | ------------------------------------------------------------ |
+| `frontend` / `backend` `.command` | shell command that starts the server                         |
+| `frontend` / `backend` `.port`    | the port that server listens on (proxy forwards here)        |
+| `frontend` / `backend` `.cwd`     | working directory for the command (relative to the config)   |
+| `frontend` / `backend` `.name`    | optional log label (defaults: `web` / `api`)                 |
+| `proxy.port`                      | the single unified port you open in the browser              |
+| `proxy.apiPrefix`                 | requests under this path go to the backend (default `/api`)  |
+| `restartOnCrash`                  | auto-restart a server if it exits non-zero (default `false`) |
 
 > Your dev servers must actually listen on the `port` you configure — set it in
 > their own config/flags to match (e.g. Vite's `server.port`).

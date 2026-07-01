@@ -36,9 +36,7 @@ export interface LoadConfigOptions {
 export function resolveConfigPath(options: LoadConfigOptions = {}): string {
   const cwd = options.cwd ?? process.cwd();
   if (options.configPath) {
-    return isAbsolute(options.configPath)
-      ? options.configPath
-      : resolve(cwd, options.configPath);
+    return isAbsolute(options.configPath) ? options.configPath : resolve(cwd, options.configPath);
   }
   return resolve(cwd, DEFAULT_CONFIG_FILENAME);
 }
@@ -62,9 +60,7 @@ export function loadConfig(options: LoadConfigOptions = {}): LoadedConfig {
   try {
     raw = readFileSync(configPath, "utf8");
   } catch (err) {
-    throw new ConfigError(
-      `Could not read config file at ${configPath}: ${(err as Error).message}`,
-    );
+    throw new ConfigError(`Could not read config file at ${configPath}: ${(err as Error).message}`);
   }
 
   let parsed: unknown;

@@ -17,7 +17,9 @@ function printBanner(config: DevBridgeConfig, useProxy: boolean, dashboardUrl?: 
     "",
   ];
   if (useProxy) {
-    lines.push(`  ${c.bold("Open")}       ${c.cyan.underline(`http://localhost:${config.proxy.port}`)}`);
+    lines.push(
+      `  ${c.bold("Open")}       ${c.cyan.underline(`http://localhost:${config.proxy.port}`)}`,
+    );
   }
   if (dashboardUrl) {
     lines.push(`  ${c.bold("Dashboard")}  ${c.magenta.underline(dashboardUrl)}`);
@@ -45,11 +47,15 @@ function printEnvWarnings(warnings: EnvWarning[]): void {
   for (const w of warnings) {
     if (w.missingEnvFile) {
       process.stderr.write(
-        chalk.yellow(`  ⚠ ${w.dir}: .env.example exists but .env is missing (${w.missingKeys.length} vars).\n`),
+        chalk.yellow(
+          `  ⚠ ${w.dir}: .env.example exists but .env is missing (${w.missingKeys.length} vars).\n`,
+        ),
       );
     } else {
       process.stderr.write(
-        chalk.yellow(`  ⚠ ${w.dir}: .env is missing ${w.missingKeys.length} var(s): ${w.missingKeys.join(", ")}\n`),
+        chalk.yellow(
+          `  ⚠ ${w.dir}: .env is missing ${w.missingKeys.length} var(s): ${w.missingKeys.join(", ")}\n`,
+        ),
       );
     }
   }
@@ -79,7 +85,9 @@ async function startAction(opts: StartCliOptions): Promise<void> {
   const useProxy = opts.proxy !== false;
   let wantDashboard = opts.dashboard === true;
   if (wantDashboard && !useProxy) {
-    process.stderr.write(chalk.yellow("\nThe dashboard needs the proxy; ignoring --dashboard with --no-proxy.\n"));
+    process.stderr.write(
+      chalk.yellow("\nThe dashboard needs the proxy; ignoring --dashboard with --no-proxy.\n"),
+    );
     wantDashboard = false;
   }
 
@@ -140,7 +148,9 @@ async function initAction(opts: InitCliOptions): Promise<void> {
   if (result.written) {
     process.stdout.write(chalk.green(`Created ${result.configPath}\n`));
   } else {
-    process.stdout.write(chalk.yellow(`Kept existing ${result.configPath} (use --force to overwrite)\n`));
+    process.stdout.write(
+      chalk.yellow(`Kept existing ${result.configPath} (use --force to overwrite)\n`),
+    );
   }
 }
 

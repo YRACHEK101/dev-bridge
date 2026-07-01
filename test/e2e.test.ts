@@ -57,7 +57,11 @@ describe("end-to-end", () => {
         cwd: ".",
       },
       backend: {
-        command: serverCommand(backendPort!, "application/json", `JSON.stringify({from:'backend',url:q.url})`),
+        command: serverCommand(
+          backendPort!,
+          "application/json",
+          `JSON.stringify({from:'backend',url:q.url})`,
+        ),
         port: backendPort,
         cwd: ".",
       },

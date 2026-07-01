@@ -107,7 +107,12 @@ describe("ProcessManager", () => {
   it("lets a service's own env override the injected PORT", () => {
     const { spawn, envs } = fakeSpawner();
     const config = makeConfig({
-      frontend: { command: "npm run dev", port: 5173, cwd: ".", env: { PORT: "3000", API_KEY: "x" } },
+      frontend: {
+        command: "npm run dev",
+        port: 5173,
+        cwd: ".",
+        env: { PORT: "3000", API_KEY: "x" },
+      },
     });
     const manager = new ProcessManager(config, { baseDir: "/app", spawn });
     manager.start();

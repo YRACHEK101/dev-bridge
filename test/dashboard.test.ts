@@ -1,7 +1,11 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import WebSocket from "ws";
 import { ProxyServer } from "../src/proxy/proxyServer.js";
-import { attachDashboard, DASHBOARD_BASE_PATH, type DashboardHandle } from "../src/dashboard/server.js";
+import {
+  attachDashboard,
+  DASHBOARD_BASE_PATH,
+  type DashboardHandle,
+} from "../src/dashboard/server.js";
 import { findFreePort } from "../src/utils/portCheck.js";
 import type { RequestRecord } from "../src/proxy/requestTracker.js";
 

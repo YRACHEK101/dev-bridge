@@ -97,7 +97,11 @@ describe("ProxyServer routing", () => {
     expect(res.text).toContain("frontend app");
 
     await vi.waitFor(() => expect(records.length).toBeGreaterThan(0));
-    expect(records.at(-1)).toMatchObject({ path: "/dashboard", target: "frontend", statusCode: 200 });
+    expect(records.at(-1)).toMatchObject({
+      path: "/dashboard",
+      target: "frontend",
+      statusCode: 200,
+    });
   });
 
   it("streams the request body through to the backend (no body parsing)", async () => {

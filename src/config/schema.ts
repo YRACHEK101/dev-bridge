@@ -31,10 +31,7 @@ export const proxySchema = z.object({
   /** The single unified port the developer points their browser at. */
   port: portSchema.default(4000),
   /** Requests whose path starts with this prefix are routed to the backend. */
-  apiPrefix: z
-    .string()
-    .startsWith("/", "apiPrefix must start with '/'")
-    .default("/api"),
+  apiPrefix: z.string().startsWith("/", "apiPrefix must start with '/'").default("/api"),
   /**
    * Interface the proxy binds to. Defaults to 127.0.0.1 (localhost only) so the
    * app and dashboard are not exposed on the LAN. Set to "0.0.0.0" to allow

@@ -55,7 +55,9 @@ describe("openCommand", () => {
 
 describe("readPackageVersion", () => {
   it("matches the version in package.json", () => {
-    const pkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8")) as { version: string };
+    const pkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8")) as {
+      version: string;
+    };
     expect(readPackageVersion()).toBe(pkg.version);
   });
 });

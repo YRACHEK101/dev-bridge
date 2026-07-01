@@ -88,8 +88,8 @@ describe("port-conflict resolution", () => {
     blocker = await occupy(busy);
     writeConfig(busy);
 
-    await expect(startDevBridge({ cwd: dir, quiet: true, strictPort: true })).rejects.toBeInstanceOf(
-      PortInUseError,
-    );
+    await expect(
+      startDevBridge({ cwd: dir, quiet: true, strictPort: true }),
+    ).rejects.toBeInstanceOf(PortInUseError);
   });
 });
