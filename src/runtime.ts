@@ -1,10 +1,12 @@
+import { resolve } from "node:path";
 import type { DevBridgeConfig } from "./config/schema.js";
 import { loadConfig } from "./config/loadConfig.js";
 import { ProcessManager } from "./process/processManager.js";
 import { LogAggregator } from "./logs/logAggregator.js";
 import { ProxyServer } from "./proxy/proxyServer.js";
 import { attachDashboard, DASHBOARD_BASE_PATH, type DashboardHandle } from "./dashboard/server.js";
-import { assertPortFree, PortInUseError } from "./utils/portCheck.js";
+import { isPortFree, findFreePort, PortInUseError } from "./utils/portCheck.js";
+import { checkEnvFiles, type EnvWarning } from "./utils/envGuard.js";
 
 export interface StartOptions {
   cwd?: string;
@@ -15,6 +17,10 @@ export interface StartOptions {
   proxy?: boolean;
   /** Mount the live request dashboard (requires the proxy). */
   dashboard?: boolean;
+  /** Fail if the proxy port is taken instead of auto-picking a free one. */
+  strictPort?: boolean;
+  /** Compare .env.example vs .env and report missing vars (default true). */
+  checkEnv?: boolean;
   /** Suppress merged log output (used by tests). */
   quiet?: boolean;
 }
@@ -24,15 +30,18 @@ export interface DevBridgeHandle {
   manager: ProcessManager;
   proxy?: ProxyServer;
   dashboard?: DashboardHandle;
+  /** Set when the configured proxy port was busy and we picked another. */
+  proxyPortReassignedFrom?: number;
+  /** Advisory .env warnings (empty when checkEnv is false or none found). */
+  envWarnings: EnvWarning[];
   /** Stop the dashboard, proxy, and all child processes. Idempotent. */
   shutdown(): Promise<void>;
 }
 
 /**
- * Wire the whole pipeline together: load config -> spawn processes -> merge
- * logs -> start the unified proxy -> (optionally) mount the dashboard. Returns a
- * handle whose `shutdown()` tears it all down. This is the reusable core the CLI
- * (and tests) drive.
+ * Wire the whole pipeline together: load config -> (guard ports/env) -> spawn
+ * processes -> merge logs -> start the unified proxy -> (optionally) mount the
+ * dashboard. Returns a handle whose `shutdown()` tears it all down.
  */
 export async function startDevBridge(options: StartOptions = {}): Promise<DevBridgeHandle> {
   const { config, baseDir } = loadConfig({ cwd: options.cwd, configPath: options.configPath });
@@ -40,10 +49,25 @@ export async function startDevBridge(options: StartOptions = {}): Promise<DevBri
   const useProxy = options.proxy !== false;
   const useDashboard = useProxy && options.dashboard === true;
 
-  // Fail fast with a clear message before we spawn anything.
-  if (useProxy) {
-    await assertPortFree(config.proxy.port);
+  // Port guard: auto-pick a free port unless strict mode is requested.
+  let proxyPortReassignedFrom: number | undefined;
+  if (useProxy && !(await isPortFree(config.proxy.port))) {
+    if (options.strictPort) throw new PortInUseError(config.proxy.port);
+    const free = await findFreePort(config.proxy.port + 1);
+    if (free === null) throw new PortInUseError(config.proxy.port);
+    proxyPortReassignedFrom = config.proxy.port;
+    config.proxy.port = free;
   }
+
+  // Env guard: purely advisory.
+  const envWarnings =
+    options.checkEnv === false
+      ? []
+      : checkEnvFiles([
+          baseDir,
+          resolve(baseDir, config.frontend.cwd),
+          resolve(baseDir, config.backend.cwd),
+        ]);
 
   const manager = new ProcessManager(config, { baseDir });
   if (!options.quiet) {
@@ -85,5 +109,5 @@ export async function startDevBridge(options: StartOptions = {}): Promise<DevBri
     await manager.stopAll();
   };
 
-  return { config, manager, proxy, dashboard, shutdown };
+  return { config, manager, proxy, dashboard, proxyPortReassignedFrom, envWarnings, shutdown };
 }

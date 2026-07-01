@@ -6,6 +6,7 @@ import { ConfigError } from "./config/loadConfig.js";
 import { PortInUseError } from "./utils/portCheck.js";
 import { readPackageVersion } from "./utils/version.js";
 import { openBrowser } from "./utils/openBrowser.js";
+import type { EnvWarning } from "./utils/envGuard.js";
 import type { DevBridgeConfig } from "./config/schema.js";
 
 function printBanner(config: DevBridgeConfig, useProxy: boolean, dashboardUrl?: string): void {
@@ -40,11 +41,27 @@ function printError(err: unknown): void {
   }
 }
 
+function printEnvWarnings(warnings: EnvWarning[]): void {
+  for (const w of warnings) {
+    if (w.missingEnvFile) {
+      process.stderr.write(
+        chalk.yellow(`  ⚠ ${w.dir}: .env.example exists but .env is missing (${w.missingKeys.length} vars).\n`),
+      );
+    } else {
+      process.stderr.write(
+        chalk.yellow(`  ⚠ ${w.dir}: .env is missing ${w.missingKeys.length} var(s): ${w.missingKeys.join(", ")}\n`),
+      );
+    }
+  }
+}
+
 interface StartCliOptions {
   config?: string;
   port?: string;
   proxy?: boolean; // commander sets false when --no-proxy is passed
   dashboard?: boolean;
+  strictPort?: boolean;
+  envCheck?: boolean; // commander sets false when --no-env-check is passed
 }
 
 async function startAction(opts: StartCliOptions): Promise<void> {
@@ -67,12 +84,28 @@ async function startAction(opts: StartCliOptions): Promise<void> {
 
   let handle: DevBridgeHandle;
   try {
-    handle = await startDevBridge({ configPath: opts.config, port, proxy: opts.proxy, dashboard: wantDashboard });
+    handle = await startDevBridge({
+      configPath: opts.config,
+      port,
+      proxy: opts.proxy,
+      dashboard: wantDashboard,
+      strictPort: opts.strictPort,
+      checkEnv: opts.envCheck,
+    });
   } catch (err) {
     printError(err);
     process.exitCode = 1;
     return;
   }
+
+  if (handle.proxyPortReassignedFrom !== undefined) {
+    process.stderr.write(
+      chalk.yellow(
+        `\n  ⚠ Port ${handle.proxyPortReassignedFrom} was busy — using ${handle.config.proxy.port} instead.\n`,
+      ),
+    );
+  }
+  printEnvWarnings(handle.envWarnings);
 
   const dashboardUrl = handle.dashboard?.url(handle.config.proxy.port);
   printBanner(handle.config, handle.proxy !== undefined, dashboardUrl);
@@ -123,6 +156,8 @@ export function buildProgram(): Command {
     .option("-p, --port <number>", "unified proxy port (overrides config)")
     .option("--no-proxy", "run servers with merged logs but without the proxy")
     .option("-d, --dashboard", "open a live request-timeline dashboard in the browser")
+    .option("--strict-port", "fail if the proxy port is taken (default: auto-pick a free one)")
+    .option("--no-env-check", "skip the .env.example vs .env check")
     .action(startAction);
 
   program

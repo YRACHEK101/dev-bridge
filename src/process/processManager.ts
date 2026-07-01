@@ -30,6 +30,7 @@ interface ManagedService {
   service: ServiceConfig;
   resolvedCwd: string;
   handle?: ProcessHandle;
+  restarts: number;
 }
 
 export interface ProcessManagerOptions {
@@ -37,6 +38,10 @@ export interface ProcessManagerOptions {
   baseDir: string;
   /** Override the spawner (used in tests). */
   spawn?: SpawnFn;
+  /** Delay before restarting a crashed process (when restartOnCrash is on). */
+  restartDelayMs?: number;
+  /** Max restarts per service before giving up (crash-loop guard). */
+  maxRestarts?: number;
 }
 
 /**
@@ -47,21 +52,29 @@ export interface ProcessManagerOptions {
 export class ProcessManager extends EventEmitter {
   private readonly services: ManagedService[];
   private readonly spawn?: SpawnFn;
+  private readonly restartOnCrash: boolean;
+  private readonly restartDelayMs: number;
+  private readonly maxRestarts: number;
   private shuttingDown = false;
 
   constructor(config: DevBridgeConfig, options: ProcessManagerOptions) {
     super();
     this.spawn = options.spawn;
+    this.restartOnCrash = config.restartOnCrash;
+    this.restartDelayMs = options.restartDelayMs ?? 1000;
+    this.maxRestarts = options.maxRestarts ?? 10;
     this.services = [
       {
         source: config.frontend.name ?? "web",
         service: config.frontend,
         resolvedCwd: resolve(options.baseDir, config.frontend.cwd),
+        restarts: 0,
       },
       {
         source: config.backend.name ?? "api",
         service: config.backend,
         resolvedCwd: resolve(options.baseDir, config.backend.cwd),
+        restarts: 0,
       },
     ];
   }
@@ -88,7 +101,38 @@ export class ProcessManager extends EventEmitter {
     handle.on("exit", ({ code, signal }: ExitInfo) => {
       const event: ProcessExitEvent = { source: managed.source, code, signal };
       this.emit("process:exit", event);
+      if (this.shouldRestart(code)) {
+        this.scheduleRestart(managed);
+      }
     });
+  }
+
+  private shouldRestart(code: number | null): boolean {
+    // Restart only on a genuine crash (non-zero exit), not clean stops/signals.
+    return this.restartOnCrash && !this.shuttingDown && code !== null && code !== 0;
+  }
+
+  private scheduleRestart(managed: ManagedService): void {
+    managed.restarts += 1;
+    if (managed.restarts > this.maxRestarts) {
+      this.emit("process:log", {
+        source: managed.source,
+        level: "error",
+        line: `crashed too many times (${this.maxRestarts}); giving up.`,
+      } satisfies ProcessLogEvent);
+      return;
+    }
+    this.emit("process:log", {
+      source: managed.source,
+      level: "info",
+      line: `crashed — restarting (attempt ${managed.restarts})…`,
+    } satisfies ProcessLogEvent);
+
+    const timer = setTimeout(() => {
+      if (!this.shuttingDown) this.startService(managed);
+    }, this.restartDelayMs);
+    // Don't let the restart timer keep the process alive on its own.
+    timer.unref?.();
   }
 
   /** All configured service source labels, in start order. */

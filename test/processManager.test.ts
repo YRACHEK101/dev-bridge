@@ -105,6 +105,79 @@ describe("ProcessManager", () => {
   });
 });
 
+describe("ProcessManager auto-restart", () => {
+  it("restarts a crashed process when restartOnCrash is enabled", async () => {
+    const { spawn, created, calls } = fakeSpawner();
+    const manager = new ProcessManager(makeConfig({ restartOnCrash: true }), {
+      baseDir: "/app",
+      spawn,
+      restartDelayMs: 5,
+    });
+    const logs: Array<{ source: string; line: string }> = [];
+    manager.on("process:log", (e) => logs.push(e));
+
+    manager.start();
+    expect(calls).toHaveLength(2);
+
+    // Crash the frontend with a non-zero exit code.
+    created[0]!.emit("exit", 1, null);
+
+    await vi.waitFor(() => expect(calls).toHaveLength(3));
+    expect(calls[2]).toEqual({ command: "npm run dev", cwd: resolve("/app", "./client") });
+    expect(logs.some((l) => l.source === "web" && /restarting/.test(l.line))).toBe(true);
+  });
+
+  it("does NOT restart on a clean (code 0) exit", async () => {
+    const { spawn, created, calls } = fakeSpawner();
+    const manager = new ProcessManager(makeConfig({ restartOnCrash: true }), {
+      baseDir: "/app",
+      spawn,
+      restartDelayMs: 5,
+    });
+    manager.start();
+    created[0]!.emit("exit", 0, null);
+
+    await new Promise((r) => setTimeout(r, 30));
+    expect(calls).toHaveLength(2); // no restart
+  });
+
+  it("does NOT restart when restartOnCrash is disabled", async () => {
+    const { spawn, created, calls } = fakeSpawner();
+    const manager = new ProcessManager(makeConfig({ restartOnCrash: false }), {
+      baseDir: "/app",
+      spawn,
+      restartDelayMs: 5,
+    });
+    manager.start();
+    created[0]!.emit("exit", 1, null);
+
+    await new Promise((r) => setTimeout(r, 30));
+    expect(calls).toHaveLength(2);
+  });
+
+  it("gives up after maxRestarts and logs it", async () => {
+    const { spawn, created, calls } = fakeSpawner();
+    const manager = new ProcessManager(makeConfig({ restartOnCrash: true }), {
+      baseDir: "/app",
+      spawn,
+      restartDelayMs: 2,
+      maxRestarts: 1,
+    });
+    const logs: Array<{ source: string; line: string; level: string }> = [];
+    manager.on("process:log", (e) => logs.push(e));
+
+    manager.start();
+    created[0]!.emit("exit", 1, null); // restart attempt 1 -> spawns created[2]
+    await vi.waitFor(() => expect(calls).toHaveLength(3));
+    created[2]!.emit("exit", 1, null); // attempt 2 > maxRestarts -> give up
+
+    await vi.waitFor(() => expect(logs.some((l) => /giving up/.test(l.line))).toBe(true));
+    // No further spawn beyond the single allowed restart.
+    await new Promise((r) => setTimeout(r, 20));
+    expect(calls).toHaveLength(3);
+  });
+});
+
 describe("spawnProcess (real execa integration)", () => {
   it("streams stdout/stderr lines and reports exit code from a real process", async () => {
     const handle = spawnProcess(

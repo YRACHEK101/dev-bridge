@@ -12,14 +12,19 @@ export class PortInUseError extends Error {
   }
 }
 
-/** Resolve true if nothing is listening on `port` (best-effort). */
-export function isPortFree(port: number, host?: string): Promise<boolean> {
+/**
+ * Resolve true if nothing is listening on `port` (best-effort).
+ *
+ * Checks 127.0.0.1 by default: dev servers bind localhost, and testing the exact
+ * host we care about avoids false "free" results from SO_REUSEADDR when probing
+ * all interfaces on macOS/BSD.
+ */
+export function isPortFree(port: number, host = "127.0.0.1"): Promise<boolean> {
   return new Promise((resolve) => {
     const tester = createServer();
     tester.once("error", () => resolve(false));
     tester.once("listening", () => tester.close(() => resolve(true)));
-    if (host) tester.listen(port, host);
-    else tester.listen(port);
+    tester.listen(port, host);
   });
 }
 
