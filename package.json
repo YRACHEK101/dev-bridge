@@ -55,7 +55,7 @@
   },
   "homepage": "https://github.com/YRACHEK101/dev-bridge#readme",
   "license": "MIT",
-  "author": "YRACHEK101 <r.yahia.dev@gmail.com>",
+  "author": "Yahia Rachek <r.yahia.dev@gmail.com>",
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^12.1.0",

@@ -2,7 +2,8 @@ import { describe, it, expect, afterEach } from "vitest";
 import { createServer, type Server } from "node:net";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { checkEnvFiles } from "../src/utils/envGuard.js";
 import { findFreePort, PortInUseError } from "../src/utils/portCheck.js";
 import { startDevBridge, type DevBridgeHandle } from "../src/runtime.js";
@@ -57,7 +58,9 @@ describe("checkEnvFiles", () => {
 
 describe("port-conflict resolution", () => {
   // Idle child processes: they just need to exist, not serve, for the port guard.
-  const idle = `node -e "setInterval(()=>{},1000)"`;
+  // A real fixture script (no shell quoting) that just stays alive.
+  const idleScript = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "idle.cjs");
+  const idle = `node "${idleScript}"`;
 
   function writeConfig(proxyPort: number): void {
     dir = mkdtempSync(join(tmpdir(), "devbridge-port-"));

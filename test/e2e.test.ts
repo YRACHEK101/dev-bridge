@@ -1,12 +1,20 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { findFreePort, isPortFree } from "../src/utils/portCheck.js";
 import { startDevBridge, type DevBridgeHandle } from "../src/runtime.js";
 import type { RequestRecord } from "../src/proxy/requestTracker.js";
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// A real fixture script (not an inline `node -e` string) so the spawned command
+// has no shell-quoting and behaves identically on macOS/Linux/Windows. The
+// server reads PORT (injected by dev-bridge) and DUMMY_KIND (per-service env).
+const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
+const dummyServer = join(fixtureDir, "dummy-server.cjs");
+const serverCommand = () => `node "${dummyServer}"`;
 
 /** Poll a URL until it responds (dev server finished booting). */
 async function waitForOk(url: string, timeoutMs = 8000): Promise<void> {
@@ -21,15 +29,6 @@ async function waitForOk(url: string, timeoutMs = 8000): Promise<void> {
     await delay(150);
   }
   throw new Error(`server never became ready: ${url}`);
-}
-
-/** A one-line Node HTTP server, embedded directly in the config command. */
-function serverCommand(port: number, contentType: string, bodyExpr: string): string {
-  return (
-    `node -e "require('http').createServer((q,s)=>{` +
-    `s.writeHead(200,{'content-type':'${contentType}'});s.end(${bodyExpr});` +
-    `}).listen(${port},'127.0.0.1');"`
-  );
 }
 
 let handle: DevBridgeHandle | undefined;
@@ -52,20 +51,20 @@ describe("end-to-end", () => {
     dir = mkdtempSync(join(tmpdir(), "devbridge-e2e-"));
     const config = {
       frontend: {
-        command: serverCommand(frontendPort!, "text/html", `'<html>frontend app</html>'`),
+        command: serverCommand(),
         port: frontendPort,
         cwd: ".",
+        host: "127.0.0.1",
+        env: { DUMMY_KIND: "frontend" },
       },
       backend: {
-        command: serverCommand(
-          backendPort!,
-          "application/json",
-          `JSON.stringify({from:'backend',url:q.url})`,
-        ),
+        command: serverCommand(),
         port: backendPort,
         cwd: ".",
+        host: "127.0.0.1",
+        env: { DUMMY_KIND: "backend" },
       },
-      proxy: { port: proxyPort, apiPrefix: "/api" },
+      proxy: { port: proxyPort, apiPrefix: "/api", host: "127.0.0.1" },
     };
     writeFileSync(join(dir, "dev-bridge.config.json"), JSON.stringify(config), "utf8");
 
