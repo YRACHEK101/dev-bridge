@@ -1,0 +1,5 @@
+{
+  "frontend": { "command": "node server.js", "port": 5173, "cwd": "./client" },
+  "backend": { "command": "node server.js", "port": 5000, "cwd": "./server" },
+  "proxy": { "port": 4000, "apiPrefix": "/api" }
+}

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>dev-bridge example · todos</title>
+  <style>
+    body { font: 15px/1.6 system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #1f2430; }
+    h1 { margin-bottom: 4px; }
+    p.lead { color: #667; margin-top: 0; }
+    code { background: #f0f2f7; padding: 1px 5px; border-radius: 4px; }
+    ul { list-style: none; padding: 0; }
+    li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #e5e8f0; border-radius: 8px; margin-bottom: 6px; }
+    li.done span.title { text-decoration: line-through; color: #9aa; }
+    form { display: flex; gap: 8px; margin-top: 16px; }
+    input { flex: 1; padding: 8px 10px; border: 1px solid #cdd3e0; border-radius: 8px; font: inherit; }
+    button { padding: 8px 14px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font: inherit; cursor: pointer; }
+    #err { color: #c0392b; }
+  </style>
+</head>
+<body>
+  <h1>Todos</h1>
+  <p class="lead">
+    This page is served on the <strong>frontend</strong> port, but it calls
+    <code>/api/todos</code> on the <strong>same origin</strong> — dev-bridge
+    forwards it to the backend, so there is no CORS setup.
+  </p>
+
+  <ul id="list"></ul>
+  <form id="add">
+    <input id="title" placeholder="Add a todo…" autocomplete="off" />
+    <button type="submit">Add</button>
+  </form>
+  <p id="err"></p>
+
+  <script>
+    const list = document.getElementById("list");
+    const err = document.getElementById("err");
+
+    async function load() {
+      err.textContent = "";
+      try {
+        const res = await fetch("/api/todos");
+        const todos = await res.json();
+        list.innerHTML = "";
+        for (const t of todos) {
+          const li = document.createElement("li");
+          li.className = t.done ? "done" : "";
+          li.innerHTML = '<span>' + (t.done ? "✓" : "○") + '</span><span class="title"></span>';
+          li.querySelector(".title").textContent = t.title;
+          list.appendChild(li);
+        }
+      } catch (e) {
+        err.textContent = "Failed to reach /api/todos: " + e.message;
+      }
+    }
+
+    document.getElementById("add").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const input = document.getElementById("title");
+      const title = input.value.trim();
+      if (!title) return;
+      input.value = "";
+      await fetch("/api/todos", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      load();
+    });
+
+    load();
+  </script>
+</body>
+</html>

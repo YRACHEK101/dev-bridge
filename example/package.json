@@ -1,0 +1,7 @@
+{
+  "name": "dev-bridge-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "A runnable dev-bridge example: tiny todo app (frontend + backend), no dependencies."
+}
