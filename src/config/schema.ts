@@ -15,6 +15,14 @@ export const serviceSchema = z.object({
   port: portSchema,
   /** Working directory for the command, relative to the config file. */
   cwd: z.string().min(1).default("."),
+  /**
+   * Host the proxy connects to for this server. Defaults to "localhost", which
+   * (with Happy Eyeballs) reaches a server bound to either 127.0.0.1 or ::1.
+   * Override to e.g. "127.0.0.1" or "::1" to force one stack.
+   */
+  host: z.string().min(1).default("localhost"),
+  /** Extra environment variables for the spawned process. */
+  env: z.record(z.string(), z.string()).optional(),
   /** Optional human label; falls back to "web"/"api" at the call site. */
   name: z.string().min(1).optional(),
 });
@@ -27,6 +35,12 @@ export const proxySchema = z.object({
     .string()
     .startsWith("/", "apiPrefix must start with '/'")
     .default("/api"),
+  /**
+   * Interface the proxy binds to. Defaults to 127.0.0.1 (localhost only) so the
+   * app and dashboard are not exposed on the LAN. Set to "0.0.0.0" to allow
+   * access from other devices.
+   */
+  host: z.string().min(1).default("127.0.0.1"),
 });
 
 /**

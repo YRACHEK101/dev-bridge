@@ -13,6 +13,8 @@ export interface StartOptions {
   configPath?: string;
   /** Override the proxy port from config. */
   port?: number;
+  /** Override the proxy bind host from config (e.g. "0.0.0.0" for LAN access). */
+  host?: string;
   /** Start the unified proxy (default true). `false` = merged logs only. */
   proxy?: boolean;
   /** Mount the live request dashboard (requires the proxy). */
@@ -46,14 +48,16 @@ export interface DevBridgeHandle {
 export async function startDevBridge(options: StartOptions = {}): Promise<DevBridgeHandle> {
   const { config, baseDir } = loadConfig({ cwd: options.cwd, configPath: options.configPath });
   if (options.port !== undefined) config.proxy.port = options.port;
+  if (options.host !== undefined) config.proxy.host = options.host;
   const useProxy = options.proxy !== false;
   const useDashboard = useProxy && options.dashboard === true;
 
   // Port guard: auto-pick a free port unless strict mode is requested.
+  const bindHost = config.proxy.host;
   let proxyPortReassignedFrom: number | undefined;
-  if (useProxy && !(await isPortFree(config.proxy.port))) {
+  if (useProxy && !(await isPortFree(config.proxy.port, bindHost))) {
     if (options.strictPort) throw new PortInUseError(config.proxy.port);
-    const free = await findFreePort(config.proxy.port + 1);
+    const free = await findFreePort(config.proxy.port + 1, 20, bindHost);
     if (free === null) throw new PortInUseError(config.proxy.port);
     proxyPortReassignedFrom = config.proxy.port;
     config.proxy.port = free;
@@ -80,9 +84,12 @@ export async function startDevBridge(options: StartOptions = {}): Promise<DevBri
   if (useProxy) {
     proxy = new ProxyServer({
       proxyPort: config.proxy.port,
+      proxyHost: config.proxy.host,
       apiPrefix: config.proxy.apiPrefix,
       frontendPort: config.frontend.port,
+      frontendHost: config.frontend.host,
       backendPort: config.backend.port,
+      backendHost: config.backend.host,
       reservedPrefix: useDashboard ? DASHBOARD_BASE_PATH : undefined,
     });
     try {

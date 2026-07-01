@@ -1,8 +1,13 @@
+import { setDefaultAutoSelectFamily } from "node:net";
 import type { Server, IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import express, { type Express } from "express";
 import { createProxyMiddleware, type RequestHandler as ProxyHandler } from "http-proxy-middleware";
 import { RequestTracker } from "./requestTracker.js";
+
+// Reach dev servers bound to either IPv4 (127.0.0.1) or IPv6 (::1) when the
+// target host is "localhost". Default on Node 20+, but set explicitly to be safe.
+setDefaultAutoSelectFamily?.(true);
 
 export interface ProxyServerOptions {
   /** The unified port the developer points the browser at. */
@@ -10,8 +15,11 @@ export interface ProxyServerOptions {
   apiPrefix: string;
   frontendPort: number;
   backendPort: number;
-  /** Upstream host; dev servers are local by default. */
-  upstreamHost?: string;
+  /** Host the proxy connects to for the frontend/backend (default "localhost"). */
+  frontendHost?: string;
+  backendHost?: string;
+  /** Interface the proxy binds to (default "127.0.0.1"). */
+  proxyHost?: string;
   /** Reuse an existing tracker (so the dashboard/logs can subscribe first). */
   tracker?: RequestTracker;
   /**
@@ -35,18 +43,19 @@ export class ProxyServer {
   readonly app: Express;
   readonly tracker: RequestTracker;
   readonly proxyPort: number;
+  private readonly proxyHost: string;
   private readonly reservedPrefix?: string;
   private readonly frontendProxy: UpgradeCapable;
   private httpServer?: Server;
 
   constructor(options: ProxyServerOptions) {
     this.proxyPort = options.proxyPort;
+    this.proxyHost = options.proxyHost ?? "127.0.0.1";
     this.reservedPrefix = options.reservedPrefix;
     this.tracker = options.tracker ?? new RequestTracker({ apiPrefix: options.apiPrefix });
 
-    const host = options.upstreamHost ?? "127.0.0.1";
-    const frontendTarget = `http://${host}:${options.frontendPort}`;
-    const backendTarget = `http://${host}:${options.backendPort}`;
+    const frontendTarget = `http://${options.frontendHost ?? "localhost"}:${options.frontendPort}`;
+    const backendTarget = `http://${options.backendHost ?? "localhost"}:${options.backendPort}`;
 
     const backendProxy = createProxyMiddleware({
       target: backendTarget,
@@ -92,7 +101,7 @@ export class ProxyServer {
   /** Start listening. Resolves once bound; rejects on bind error (e.g. EADDRINUSE). */
   listen(): Promise<Server> {
     return new Promise((resolve, reject) => {
-      const server = this.app.listen(this.proxyPort);
+      const server = this.app.listen(this.proxyPort, this.proxyHost);
       const onError = (err: Error) => {
         server.removeListener("listening", onListening);
         reject(err);

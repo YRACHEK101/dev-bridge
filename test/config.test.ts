@@ -33,8 +33,9 @@ describe("configSchema", () => {
       frontend: { command: "npm run dev", port: 5173, cwd: "./client" },
       backend: { command: "npm run server", port: 5000 },
     });
-    expect(config.proxy).toEqual({ port: 4000, apiPrefix: "/api" });
+    expect(config.proxy).toEqual({ port: 4000, apiPrefix: "/api", host: "127.0.0.1" });
     expect(config.backend.cwd).toBe(".");
+    expect(config.frontend.host).toBe("localhost");
     expect(config.restartOnCrash).toBe(false);
   });
 });
@@ -49,9 +50,15 @@ describe("loadConfig", () => {
 
     const { config, baseDir } = loadConfig({ configPath });
 
-    expect(config.frontend).toEqual({ command: "npm run dev", port: 5173, cwd: "./client" });
+    expect(config.frontend).toEqual({
+      command: "npm run dev",
+      port: 5173,
+      cwd: "./client",
+      host: "localhost",
+    });
     expect(config.backend.port).toBe(5000);
     expect(config.proxy.apiPrefix).toBe("/api");
+    expect(config.proxy.host).toBe("127.0.0.1");
     expect(baseDir).toBe(dir);
   });
 

@@ -36,13 +36,15 @@ function makeConfig(overrides: Partial<DevBridgeConfig> = {}): DevBridgeConfig {
 function fakeSpawner() {
   const created: FakeSubprocess[] = [];
   const calls: Array<{ command: string; cwd: string }> = [];
+  const envs: NodeJS.ProcessEnv[] = [];
   const spawn: SpawnFn = (command, options) => {
     calls.push({ command, cwd: options.cwd });
+    envs.push(options.env);
     const sp = new FakeSubprocess();
     created.push(sp);
     return sp;
   };
-  return { spawn, created, calls };
+  return { spawn, created, calls, envs };
 }
 
 describe("ProcessManager", () => {
@@ -92,6 +94,25 @@ describe("ProcessManager", () => {
     }
     expect(exits.sort()).toEqual(["api", "web"]);
     expect(manager.isShuttingDown).toBe(true);
+  });
+
+  it("injects PORT (the configured port) into each child's environment", () => {
+    const { spawn, envs } = fakeSpawner();
+    const manager = new ProcessManager(makeConfig(), { baseDir: "/app", spawn });
+    manager.start();
+    expect(envs[0]!.PORT).toBe("5173"); // frontend
+    expect(envs[1]!.PORT).toBe("5000"); // backend
+  });
+
+  it("lets a service's own env override the injected PORT", () => {
+    const { spawn, envs } = fakeSpawner();
+    const config = makeConfig({
+      frontend: { command: "npm run dev", port: 5173, cwd: ".", env: { PORT: "3000", API_KEY: "x" } },
+    });
+    const manager = new ProcessManager(config, { baseDir: "/app", spawn });
+    manager.start();
+    expect(envs[0]!.PORT).toBe("3000");
+    expect(envs[0]!.API_KEY).toBe("x");
   });
 
   it("uses custom name labels when provided", () => {
@@ -153,6 +174,40 @@ describe("ProcessManager auto-restart", () => {
 
     await new Promise((r) => setTimeout(r, 30));
     expect(calls).toHaveLength(2);
+  });
+
+  it("resets the restart budget after a process has run healthy", () => {
+    vi.useFakeTimers();
+    try {
+      const { spawn, created, calls } = fakeSpawner();
+      const manager = new ProcessManager(makeConfig({ restartOnCrash: true }), {
+        baseDir: "/app",
+        spawn,
+        restartDelayMs: 1,
+        maxRestarts: 1, // only one rapid restart allowed...
+        healthyResetMs: 10_000,
+      });
+      const logs: Array<{ line: string }> = [];
+      manager.on("process:log", (e) => logs.push(e));
+
+      manager.start();
+      // Frontend runs healthy for 15s, then crashes -> budget resets, restarts.
+      vi.advanceTimersByTime(15_000);
+      created[0]!.emit("exit", 1, null);
+      vi.advanceTimersByTime(5); // let the restart timer fire
+      expect(calls).toHaveLength(3);
+
+      // ...and again: healthy for 15s, crash -> resets again, restarts again.
+      vi.advanceTimersByTime(15_000);
+      created[2]!.emit("exit", 1, null);
+      vi.advanceTimersByTime(5);
+      expect(calls).toHaveLength(4);
+
+      // Because each run was healthy, we never hit the "giving up" cap.
+      expect(logs.some((l) => /giving up/.test(l.line))).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("gives up after maxRestarts and logs it", async () => {

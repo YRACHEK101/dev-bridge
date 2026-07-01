@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import { createInterface } from "node:readline";
+import { spawn as spawnChild } from "node:child_process";
 import { execa } from "execa";
 
 export type LogLevel = "info" | "error";
@@ -108,14 +109,36 @@ export class ProcessHandle extends EventEmitter {
    */
   stop(signal: NodeJS.Signals = "SIGTERM"): void {
     const pid = this.subprocess.pid;
-    try {
-      if (process.platform !== "win32" && typeof pid === "number") {
-        process.kill(-pid, signal);
-      } else {
+
+    // No OS pid (e.g. an injected fake in tests): signal the handle directly.
+    if (typeof pid !== "number") {
+      try {
         this.subprocess.kill(signal);
+      } catch {
+        /* already gone */
+      }
+      return;
+    }
+
+    try {
+      if (process.platform === "win32") {
+        // Windows has no POSIX signals/process groups; kill the whole tree.
+        const killer = spawnChild("taskkill", ["/pid", String(pid), "/T", "/F"], {
+          stdio: "ignore",
+        });
+        killer.on("error", () => {
+          try {
+            this.subprocess.kill();
+          } catch {
+            /* already gone */
+          }
+        });
+      } else {
+        // Signal the whole process group (see `detached` in defaultSpawn).
+        process.kill(-pid, signal);
       }
     } catch {
-      // Group may not exist (already exited, or not a leader); best-effort direct kill.
+      // Group/process may already be gone; best-effort direct kill.
       try {
         this.subprocess.kill(signal);
       } catch {

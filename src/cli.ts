@@ -58,6 +58,7 @@ function printEnvWarnings(warnings: EnvWarning[]): void {
 interface StartCliOptions {
   config?: string;
   port?: string;
+  host?: string;
   proxy?: boolean; // commander sets false when --no-proxy is passed
   dashboard?: boolean;
   strictPort?: boolean;
@@ -87,6 +88,7 @@ async function startAction(opts: StartCliOptions): Promise<void> {
     handle = await startDevBridge({
       configPath: opts.config,
       port,
+      host: opts.host,
       proxy: opts.proxy,
       dashboard: wantDashboard,
       strictPort: opts.strictPort,
@@ -154,6 +156,7 @@ export function buildProgram(): Command {
     .description("Start both dev servers behind the unified proxy")
     .option("-c, --config <path>", "path to dev-bridge.config.json")
     .option("-p, --port <number>", "unified proxy port (overrides config)")
+    .option("-H, --host <host>", "interface to bind (default 127.0.0.1; use 0.0.0.0 for LAN)")
     .option("--no-proxy", "run servers with merged logs but without the proxy")
     .option("-d, --dashboard", "open a live request-timeline dashboard in the browser")
     .option("--strict-port", "fail if the proxy port is taken (default: auto-pick a free one)")

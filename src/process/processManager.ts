@@ -31,6 +31,7 @@ interface ManagedService {
   resolvedCwd: string;
   handle?: ProcessHandle;
   restarts: number;
+  startedAt: number;
 }
 
 export interface ProcessManagerOptions {
@@ -42,6 +43,11 @@ export interface ProcessManagerOptions {
   restartDelayMs?: number;
   /** Max restarts per service before giving up (crash-loop guard). */
   maxRestarts?: number;
+  /**
+   * If a process ran at least this long before exiting, its restart counter is
+   * reset — so occasional crashes over a long session don't exhaust the budget.
+   */
+  healthyResetMs?: number;
 }
 
 /**
@@ -55,6 +61,7 @@ export class ProcessManager extends EventEmitter {
   private readonly restartOnCrash: boolean;
   private readonly restartDelayMs: number;
   private readonly maxRestarts: number;
+  private readonly healthyResetMs: number;
   private shuttingDown = false;
 
   constructor(config: DevBridgeConfig, options: ProcessManagerOptions) {
@@ -63,18 +70,21 @@ export class ProcessManager extends EventEmitter {
     this.restartOnCrash = config.restartOnCrash;
     this.restartDelayMs = options.restartDelayMs ?? 1000;
     this.maxRestarts = options.maxRestarts ?? 10;
+    this.healthyResetMs = options.healthyResetMs ?? 20000;
     this.services = [
       {
         source: config.frontend.name ?? "web",
         service: config.frontend,
         resolvedCwd: resolve(options.baseDir, config.frontend.cwd),
         restarts: 0,
+        startedAt: 0,
       },
       {
         source: config.backend.name ?? "api",
         service: config.backend,
         resolvedCwd: resolve(options.baseDir, config.backend.cwd),
         restarts: 0,
+        startedAt: 0,
       },
     ];
   }
@@ -88,10 +98,17 @@ export class ProcessManager extends EventEmitter {
 
   private startService(managed: ManagedService): void {
     const handle = spawnProcess(
-      { command: managed.service.command, cwd: managed.resolvedCwd },
+      {
+        command: managed.service.command,
+        cwd: managed.resolvedCwd,
+        // Inject PORT (the configured port) so servers that read process.env.PORT
+        // bind the right port automatically; user-provided env wins over it.
+        env: { PORT: String(managed.service.port), ...(managed.service.env ?? {}) },
+      },
       this.spawn,
     );
     managed.handle = handle;
+    managed.startedAt = Date.now();
 
     handle.on("log", ({ level, line }: LogEvent) => {
       const event: ProcessLogEvent = { source: managed.source, level, line };
@@ -101,6 +118,11 @@ export class ProcessManager extends EventEmitter {
     handle.on("exit", ({ code, signal }: ExitInfo) => {
       const event: ProcessExitEvent = { source: managed.source, code, signal };
       this.emit("process:exit", event);
+      // A process that stayed up past the healthy threshold earns a fresh
+      // restart budget; only rapid successive crashes count toward the cap.
+      if (Date.now() - managed.startedAt >= this.healthyResetMs) {
+        managed.restarts = 0;
+      }
       if (this.shouldRestart(code)) {
         this.scheduleRestart(managed);
       }
