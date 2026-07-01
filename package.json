@@ -1,0 +1,71 @@
+{
+  "name": "dev-bridge",
+  "version": "0.1.0",
+  "description": "One command to run your frontend + backend dev servers behind a single unified proxy port — no CORS setup, merged logs, and a live request dashboard.",
+  "type": "module",
+  "bin": {
+    "dev-bridge": "bin/dev-bridge.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "keywords": [
+    "dev",
+    "proxy",
+    "cli",
+    "fullstack",
+    "mern",
+    "pern",
+    "frontend",
+    "backend",
+    "cors",
+    "dev-server",
+    "log-aggregator",
+    "developer-tools"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/dev-bridge.git"
+  },
+  "license": "MIT",
+  "author": "",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "execa": "^9.5.1",
+    "express": "^4.21.1",
+    "http-proxy-middleware": "^3.0.3",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.9.0",
+    "@types/supertest": "^6.0.2",
+    "@types/ws": "^8.5.13",
+    "supertest": "^7.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}
