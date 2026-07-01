@@ -13,8 +13,14 @@ export async function openBrowser(url: string): Promise<void> {
   }
 }
 
-function openCommand(url: string): { command: string; args: string[] } {
-  switch (process.platform) {
+
+
+/** The platform-specific command used to open a URL (exported for testing). */
+export function openCommand(
+  url: string,
+  platform: NodeJS.Platform = process.platform,
+): { command: string; args: string[] } {
+  switch (platform) {
     case "darwin":
       return { command: "open", args: [url] };
     case "win32":
