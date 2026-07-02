@@ -51,8 +51,10 @@ dev-bridge --dashboard
 
 ## Configuration
 
-`dev-bridge` reads `dev-bridge.config.json` from the current directory (or
-`--config <path>`):
+`dev-bridge` reads its config from the current directory (or `--config <path>`).
+Supported formats: `dev-bridge.config.{json,js,mjs,cjs,ts}` — JS/TS configs are
+loaded via [jiti](https://github.com/unjs/jiti), so you can use comments and
+computed values.
 
 ```json
 {
@@ -63,18 +65,19 @@ dev-bridge --dashboard
 }
 ```
 
-| Field                             | Meaning                                                             |
-| --------------------------------- | ------------------------------------------------------------------- |
-| `frontend` / `backend` `.command` | shell command that starts the server                                |
-| `frontend` / `backend` `.port`    | the port that server listens on (proxy forwards here)               |
-| `frontend` / `backend` `.cwd`     | working directory for the command (relative to the config)          |
-| `frontend` / `backend` `.host`    | host the proxy connects to (default `localhost`; reaches IPv4/IPv6) |
-| `frontend` / `backend` `.env`     | extra environment variables for that process (object)               |
-| `frontend` / `backend` `.name`    | optional log label (defaults: `web` / `api`)                        |
-| `proxy.port`                      | the single unified port you open in the browser                     |
-| `proxy.host`                      | interface the proxy binds to (default `127.0.0.1`)                  |
-| `proxy.apiPrefix`                 | requests under this path go to the backend (default `/api`)         |
-| `restartOnCrash`                  | auto-restart a server if it exits non-zero (default `false`)        |
+| Field                               | Meaning                                                             |
+| ----------------------------------- | ------------------------------------------------------------------- |
+| `frontend` / `backend` `.command`   | shell command that starts the server                                |
+| `frontend` / `backend` `.port`      | the port that server listens on (proxy forwards here)               |
+| `frontend` / `backend` `.cwd`       | working directory for the command (relative to the config)          |
+| `frontend` / `backend` `.host`      | host the proxy connects to (default `localhost`; reaches IPv4/IPv6) |
+| `frontend` / `backend` `.env`       | extra environment variables for that process (object)               |
+| `frontend` / `backend` `.readyPath` | health path to poll for wait-for-ready (e.g. `/health`)             |
+| `frontend` / `backend` `.name`      | optional log label (defaults: `web` / `api`)                        |
+| `proxy.port`                        | the single unified port you open in the browser                     |
+| `proxy.host`                        | interface the proxy binds to (default `127.0.0.1`)                  |
+| `proxy.apiPrefix`                   | requests under this path go to the backend (default `/api`)         |
+| `restartOnCrash`                    | auto-restart a server if it exits non-zero (default `false`)        |
 
 > **`PORT` is injected.** dev-bridge sets `PORT=<the configured port>` in each
 > server's environment, so servers that read `process.env.PORT` bind the right
@@ -93,7 +96,9 @@ Start options:
   -p, --port <number>   unified proxy port (overrides config)
   -H, --host <host>     interface to bind (default 127.0.0.1; use 0.0.0.0 for LAN)
   -d, --dashboard       open a live request-timeline dashboard
+  -v, --verbose         print [dev-bridge] diagnostics about the startup sequence
       --no-proxy        run servers + merged logs without the proxy
+      --no-wait         don't wait for the servers to start listening first
       --strict-port     fail if the proxy port is taken (default: auto-pick free)
       --no-env-check    skip the .env.example vs .env check
   -V, --version
@@ -119,6 +124,43 @@ browser ──▶ http://localhost:4000   (the only origin your app knows)
 Because the browser talks to a single origin, there are no cross-origin
 requests — no CORS headers to configure. WebSocket upgrades (e.g. Vite/Next HMR)
 are forwarded to the frontend automatically.
+
+## What it looks like
+
+```text
+  dev-bridge  ·  one port for your whole stack
+
+  Open       http://localhost:4000
+  Dashboard  http://localhost:4000/_devbridge
+  Frontend   npm run dev     → :5173
+  Backend    npm run server  → :5000  /api/*
+
+  Press Ctrl+C to stop.
+
+[10:24:01] [web] VITE ready in 412 ms
+[10:24:01] [api] API listening on http://localhost:5000
+[10:24:07] [api] GET /api/todos 200 18ms
+```
+
+Frontend lines are cyan, backend magenta, errors red — all interleaved in one
+terminal, in real time. With `--dashboard`, the same requests stream into a live
+timeline at `/_devbridge`.
+
+## Why not just `concurrently` + CORS?
+
+`concurrently "npm run client" "npm run server"` runs both processes, and that's
+it. You still:
+
+- **configure CORS** on your backend (or a framework proxy) so the browser can
+  call the API from a different port;
+- juggle **two URLs/ports** and keep them straight;
+- read **interleaved-but-unlabelled** logs with no per-line source or timing;
+- have **no view** of requests crossing the front↔back boundary.
+
+`dev-bridge` gives you **one origin** (no CORS), **labelled/timed merged logs**,
+a **live request dashboard**, plus quality-of-life guards (port auto-resolution,
+`.env` check, wait-for-ready, crash restart). It's the "run both servers" step
+_plus_ the glue you'd otherwise wire by hand.
 
 ## Try the example
 
