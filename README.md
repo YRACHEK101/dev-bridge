@@ -1,7 +1,18 @@
-# dev-bridge
+<p align="center">
+  <img src="assets/logo-banner.png" alt="dev-bridge" width="620" />
+</p>
 
-**One command to run your frontend + backend dev servers behind a single port.**
-No CORS setup, merged logs, and a live request dashboard.
+<p align="center">
+  <a href="https://www.npmjs.com/package/dev-bridge"><img src="https://img.shields.io/npm/v/dev-bridge?color=22d3ee&label=npm" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/dev-bridge"><img src="https://img.shields.io/npm/dm/dev-bridge?color=c084fc" alt="downloads" /></a>
+  <img src="https://img.shields.io/node/v/dev-bridge?color=3c873a" alt="node version" />
+  <img src="https://img.shields.io/npm/l/dev-bridge?color=blue" alt="license" />
+</p>
+
+<p align="center">
+  <b>One command to run your frontend + backend dev servers behind a single port.</b><br/>
+  No CORS setup&nbsp;·&nbsp;merged logs&nbsp;·&nbsp;a live request dashboard.
+</p>
 
 Running a separate frontend (Next.js / Vite / CRA) and backend (Express / any
 Node server) locally means scattered ports, manual CORS config, logs split
@@ -22,32 +33,70 @@ Framework-agnostic: if it starts with a command and listens on a port, it works.
 
 ---
 
-## Install
+## Getting started (Windows · macOS · Linux)
+
+The commands are **identical on every OS**. Run them in your terminal —
+PowerShell or Windows Terminal on Windows, Terminal/iTerm on macOS, any shell on
+Linux.
+
+### 1. Make sure you have Node.js 20+
+
+Check your version:
 
 ```bash
-npm install -g dev-bridge
-# or run without installing:
-npx dev-bridge
+node -v
 ```
 
-Requires **Node.js ≥ 20**.
+If it prints `v20` (or higher) you're good. If not, install Node **LTS**:
 
-## Quick start
+| OS          | Easiest way                                                                       |
+| ----------- | --------------------------------------------------------------------------------- |
+| **Windows** | [nodejs.org](https://nodejs.org) installer, or `winget install OpenJS.NodeJS.LTS` |
+| **macOS**   | [nodejs.org](https://nodejs.org) installer, or `brew install node`                |
+| **Linux**   | your package manager, or [nvm](https://github.com/nvm-sh/nvm): `nvm install 20`   |
 
-From your project root:
+### 2. Create a config in your project
+
+Go to your project's root folder (the one with your frontend and backend), then:
 
 ```bash
-dev-bridge init      # interactively scaffold dev-bridge.config.json
-dev-bridge           # start both servers behind the unified proxy
+cd my-project
+npx dev-bridge init
 ```
 
-Then open the printed **unified URL** (default http://localhost:4000).
+`init` **auto-detects** your stack (Next.js / Vite / CRA on the frontend;
+Express / Fastify / Koa / NestJS on the backend) and pre-fills the commands and
+ports — press **Enter** to accept each suggestion or type your own. It writes a
+`dev-bridge.config.json`:
 
-Want the request dashboard too?
+```json
+{
+  "frontend": { "command": "npm run dev", "port": 5173, "cwd": "./client" },
+  "backend": { "command": "npm run server", "port": 5000, "cwd": "./server" },
+  "proxy": { "port": 4000, "apiPrefix": "/api" }
+}
+```
+
+> `command` = how each server starts · `port` = where it listens · `cwd` = its
+> folder. Adjust to match your project.
+
+### 3. Start both servers
 
 ```bash
-dev-bridge --dashboard
+npx dev-bridge              # add --dashboard for the live request timeline
 ```
+
+You'll get a banner with the **unified URL** and both servers' logs merged into
+one terminal.
+
+### 4. Open your app
+
+Open **http://localhost:4000** in your browser. Your frontend loads, and any
+call it makes to `/api/...` is forwarded to your backend on the **same origin**
+— so there's **no CORS to configure**. Press **Ctrl+C** to stop everything.
+
+> **Use it everywhere:** install once with `npm install -g dev-bridge`, then just
+> run `dev-bridge` (instead of `npx dev-bridge`) in any project.
 
 ## Configuration
 

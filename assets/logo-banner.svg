@@ -1,0 +1,46 @@
+<svg width="1024" height="260" viewBox="0 0 1024 260" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="dev-bridge — one port for your whole stack">
+  <defs>
+    <linearGradient id="bbg" x1="0" y1="0" x2="0" y2="260" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#12161f"/>
+      <stop offset="1" stop-color="#0b0d14"/>
+    </linearGradient>
+    <linearGradient id="wm" x1="470" y1="0" x2="760" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38dcf2"/>
+      <stop offset="1" stop-color="#c084fc"/>
+    </linearGradient>
+    <linearGradient id="bport" x1="196" y1="104" x2="260" y2="156" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#c084fc"/>
+    </linearGradient>
+    <filter id="bglow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect x="1" y="1" width="1022" height="258" rx="26" fill="url(#bbg)" stroke="#232838" stroke-width="2"/>
+
+  <!-- mark -->
+  <g transform="translate(48 0)">
+    <g fill="none" stroke-linecap="round" stroke-width="12">
+      <path d="M76 92 C 112 92, 132 112, 176 130" stroke="#22d3ee"/>
+      <path d="M76 168 C 112 168, 132 148, 176 130" stroke="#c084fc"/>
+      <path d="M172 130 L 196 130" stroke="url(#bport)"/>
+    </g>
+    <circle cx="76" cy="92" r="15" fill="#22d3ee"/>
+    <circle cx="76" cy="168" r="15" fill="#c084fc"/>
+    <g filter="url(#bglow)">
+      <circle cx="228" cy="130" r="26" fill="none" stroke="url(#bport)" stroke-width="12"/>
+      <circle cx="228" cy="130" r="6.5" fill="#eef1f7"/>
+    </g>
+  </g>
+
+  <!-- wordmark -->
+  <text x="336" y="142" font-family="'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif" font-size="66" font-weight="800" letter-spacing="-1">
+    <tspan fill="#8b93a7">dev</tspan><tspan fill="url(#wm)">-bridge</tspan>
+  </text>
+  <text x="338" y="184" font-family="'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif" font-size="23" font-weight="500" fill="#8b93a7">one port for your whole stack</text>
+</svg>

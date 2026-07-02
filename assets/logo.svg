@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="dev-bridge logo">
+  <defs>
+    <linearGradient id="bg" x1="256" y1="16" x2="256" y2="496" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#171c28"/>
+      <stop offset="1" stop-color="#0b0d14"/>
+    </linearGradient>
+    <linearGradient id="port" x1="338" y1="210" x2="430" y2="302" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#c084fc"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="9" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- app badge -->
+  <rect x="16" y="16" width="480" height="480" rx="116" fill="url(#bg)" stroke="#242b3d" stroke-width="2"/>
+
+  <!-- two streams merging into one -->
+  <g fill="none" stroke-linecap="round" stroke-width="22">
+    <path d="M150 182 C 214 182, 250 226, 304 256" stroke="#22d3ee"/>
+    <path d="M150 330 C 214 330, 250 286, 304 256" stroke="#c084fc"/>
+    <path d="M300 256 L 338 256" stroke="url(#port)"/>
+  </g>
+
+  <!-- source nodes: frontend (cyan) + backend (magenta) -->
+  <circle cx="150" cy="182" r="27" fill="#22d3ee"/>
+  <circle cx="150" cy="330" r="27" fill="#c084fc"/>
+
+  <!-- the unified port -->
+  <g filter="url(#glow)">
+    <circle cx="384" cy="256" r="46" fill="none" stroke="url(#port)" stroke-width="22"/>
+    <circle cx="384" cy="256" r="12" fill="#eef1f7"/>
+  </g>
+</svg>
