@@ -38,7 +38,9 @@ jobs:
       - run: npm test
       - run: npm run build
 
+      # Note: --provenance requires a PUBLIC repo. Re-add it once this repo is
+      # public to get the npm provenance/supply-chain attestation.
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
