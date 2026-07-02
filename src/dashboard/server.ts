@@ -33,7 +33,9 @@ export interface DashboardHandle {
 export function attachDashboard(options: DashboardOptions): DashboardHandle {
   const basePath = (options.basePath ?? DASHBOARD_BASE_PATH).replace(/\/$/, "");
   const wsPath = basePath + "/ws";
-  const backlogSize = options.backlogSize ?? 200;
+  // In-memory ring buffer of recent requests, replayed to each new client so
+  // they can scroll back beyond what happened while connected.
+  const backlogSize = options.backlogSize ?? 1000;
   const backlog: RequestRecord[] = [];
 
   // --- Static page ---

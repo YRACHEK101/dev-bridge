@@ -65,7 +65,7 @@ export const DASHBOARD_HTML = `<!doctype html>
 
 <script>
 (function () {
-  var MAX_ROWS = 500;
+  var MAX_ROWS = 1000;
   var rows = document.getElementById('rows');
   var table = document.getElementById('table');
   var empty = document.getElementById('empty');

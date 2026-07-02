@@ -33,7 +33,7 @@ function record(overrides: Partial<RequestRecord> = {}): RequestRecord {
   };
 }
 
-async function startDashboard(startPort: number): Promise<number> {
+async function startDashboard(startPort: number, backlogSize?: number): Promise<number> {
   const port = (await findFreePort(startPort))!;
   proxy = new ProxyServer({
     proxyPort: port,
@@ -43,7 +43,7 @@ async function startDashboard(startPort: number): Promise<number> {
     reservedPrefix: DASHBOARD_BASE_PATH,
   });
   const server = await proxy.listen();
-  dash = attachDashboard({ app: proxy.app, server, tracker: proxy.tracker });
+  dash = attachDashboard({ app: proxy.app, server, tracker: proxy.tracker, backlogSize });
   return port;
 }
 
@@ -85,6 +85,27 @@ describe("dashboard", () => {
     });
 
     expect(dash!.clientCount()).toBe(1);
+    ws.close();
+  });
+
+  it("caps the replay backlog (ring buffer drops oldest)", async () => {
+    const port = await startDashboard(6700, 3); // keep only the last 3
+    for (let i = 1; i <= 5; i++) {
+      proxy!.tracker.emit("request", record({ id: i, path: `/r${i}` }));
+    }
+
+    const ws = new WebSocket(`ws://127.0.0.1:${port}${DASHBOARD_BASE_PATH}/ws`);
+    const messages: Array<{ type: string; records?: RequestRecord[] }> = [];
+    ws.on("message", (data) => messages.push(JSON.parse(data.toString())));
+    await new Promise<void>((resolve, reject) => {
+      ws.once("open", () => resolve());
+      ws.once("error", reject);
+    });
+
+    await vi.waitFor(() => expect(messages.some((m) => m.type === "backlog")).toBe(true));
+    const backlog = messages.find((m) => m.type === "backlog")!.records!;
+    expect(backlog).toHaveLength(3);
+    expect(backlog.map((r) => r.path)).toEqual(["/r3", "/r4", "/r5"]);
     ws.close();
   });
 });

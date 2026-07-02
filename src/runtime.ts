@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import chalk from "chalk";
 import type { DevBridgeConfig } from "./config/schema.js";
 import { loadConfigFile } from "./config/loadConfig.js";
 import { ProcessManager } from "./process/processManager.js";
@@ -28,6 +29,8 @@ export interface StartOptions {
   waitForReady?: boolean;
   /** Timeout for the wait-for-ready phase (default 30000ms). */
   readyTimeoutMs?: number;
+  /** Emit [dev-bridge] diagnostic lines about the startup sequence. */
+  verbose?: boolean;
   /** Suppress merged log output (used by tests). */
   quiet?: boolean;
 }
@@ -72,10 +75,15 @@ async function waitForService(service: ServiceConfig, timeoutMs: number): Promis
  * dashboard. Returns a handle whose `shutdown()` tears it all down.
  */
 export async function startDevBridge(options: StartOptions = {}): Promise<DevBridgeHandle> {
-  const { config, baseDir } = await loadConfigFile({
-    cwd: options.cwd,
-    configPath: options.configPath,
-  });
+  const diag = (msg: string): void => {
+    if (options.verbose && !options.quiet) {
+      process.stdout.write(chalk.gray(`[dev-bridge] ${msg}\n`));
+    }
+  };
+
+  const loaded = await loadConfigFile({ cwd: options.cwd, configPath: options.configPath });
+  const { config, baseDir } = loaded;
+  diag(`loaded config from ${loaded.configPath}`);
   if (options.port !== undefined) config.proxy.port = options.port;
   if (options.host !== undefined) config.proxy.host = options.host;
   const useProxy = options.proxy !== false;
@@ -90,6 +98,7 @@ export async function startDevBridge(options: StartOptions = {}): Promise<DevBri
     if (free === null) throw new PortInUseError(config.proxy.port);
     proxyPortReassignedFrom = config.proxy.port;
     config.proxy.port = free;
+    diag(`proxy port in use; using ${free}`);
   }
 
   // Env guard: purely advisory.
@@ -106,6 +115,7 @@ export async function startDevBridge(options: StartOptions = {}): Promise<DevBri
   if (!options.quiet) {
     new LogAggregator(manager.sources).attach(manager);
   }
+  diag(`spawning: ${config.frontend.command} | ${config.backend.command}`);
   manager.start();
 
   let proxy: ProxyServer | undefined;
@@ -123,8 +133,10 @@ export async function startDevBridge(options: StartOptions = {}): Promise<DevBri
     });
     try {
       const server = await proxy.listen();
+      diag(`proxy listening on ${config.proxy.host}:${config.proxy.port}`);
       if (useDashboard) {
         dashboard = attachDashboard({ app: proxy.app, server, tracker: proxy.tracker });
+        diag("dashboard mounted at /_devbridge");
       }
     } catch (err) {
       // A crashing proxy must not leave orphaned dev servers behind.
@@ -144,11 +156,13 @@ export async function startDevBridge(options: StartOptions = {}): Promise<DevBri
       { source: config.frontend.name ?? "web", service: config.frontend },
       { source: config.backend.name ?? "api", service: config.backend },
     ];
+    diag(`waiting up to ${timeoutMs}ms for services to listen…`);
     const results = await Promise.all(
-      services.map(async ({ source, service }) => ({
-        source,
-        ready: await waitForService(service, timeoutMs),
-      })),
+      services.map(async ({ source, service }) => {
+        const ready = await waitForService(service, timeoutMs);
+        diag(`${source} ${ready ? "ready" : "did not become ready"}`);
+        return { source, ready };
+      }),
     );
     notReady = results.filter((r) => !r.ready).map((r) => r.source);
   }

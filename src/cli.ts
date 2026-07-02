@@ -70,6 +70,7 @@ interface StartCliOptions {
   strictPort?: boolean;
   envCheck?: boolean; // commander sets false when --no-env-check is passed
   wait?: boolean; // commander sets false when --no-wait is passed
+  verbose?: boolean;
 }
 
 async function startAction(opts: StartCliOptions): Promise<void> {
@@ -103,6 +104,7 @@ async function startAction(opts: StartCliOptions): Promise<void> {
       strictPort: opts.strictPort,
       checkEnv: opts.envCheck,
       waitForReady: opts.wait !== false,
+      verbose: opts.verbose,
     });
   } catch (err) {
     printError(err);
@@ -197,6 +199,7 @@ export function buildProgram(): Command {
     .option("--strict-port", "fail if the proxy port is taken (default: auto-pick a free one)")
     .option("--no-env-check", "skip the .env.example vs .env check")
     .option("--no-wait", "don't wait for the servers to start listening before showing the banner")
+    .option("-v, --verbose", "print [dev-bridge] diagnostics about the startup sequence")
     .action(startAction);
 
   program
