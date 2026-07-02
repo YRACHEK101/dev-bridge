@@ -5,10 +5,12 @@ import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import {
   loadConfig,
+  loadConfigFile,
   ConfigError,
   configSchema,
   defaultConfig,
   runInit,
+  detectStack,
 } from "../src/config/index.js";
 
 let dir: string;
@@ -122,6 +124,49 @@ describe("loadConfig", () => {
   });
 });
 
+describe("loadConfigFile (multi-format)", () => {
+  it("loads a .json config", async () => {
+    writeFileSync(
+      join(dir, "dev-bridge.config.json"),
+      JSON.stringify({
+        frontend: { command: "npm run dev", port: 5173 },
+        backend: { command: "npm run server", port: 5000 },
+      }),
+      "utf8",
+    );
+    const { config, configPath } = await loadConfigFile({ cwd: dir });
+    expect(configPath.endsWith(".json")).toBe(true);
+    expect(config.frontend.port).toBe(5173);
+  });
+
+  it("loads and validates a .mjs config (via jiti)", async () => {
+    writeFileSync(
+      join(dir, "dev-bridge.config.mjs"),
+      [
+        "export default {",
+        "  frontend: { command: 'vite', port: 5173 },",
+        "  backend: { command: 'node server.js', port: 4000 },",
+        "  proxy: { port: 8080, apiPrefix: '/api' },",
+        "};",
+      ].join("\n"),
+      "utf8",
+    );
+    const { config, configPath } = await loadConfigFile({ cwd: dir });
+    expect(configPath.endsWith(".mjs")).toBe(true);
+    expect(config.frontend.command).toBe("vite");
+    expect(config.proxy.port).toBe(8080);
+  });
+
+  it("reports schema errors from a .mjs config", async () => {
+    writeFileSync(
+      join(dir, "dev-bridge.config.mjs"),
+      "export default { frontend: { command: 'x' } };", // missing port + backend
+      "utf8",
+    );
+    await expect(loadConfigFile({ cwd: dir })).rejects.toBeInstanceOf(ConfigError);
+  });
+});
+
 describe("runInit", () => {
   it("writes a valid default config non-interactively", async () => {
     const result = await runInit({ cwd: dir, yes: true });
@@ -185,5 +230,37 @@ describe("runInit", () => {
     expect(config.frontend.port).toBe(6001);
     expect(config.frontend.command).toBe(defaultConfig().frontend.command); // blank -> default
     expect(config.proxy.apiPrefix).toBe(defaultConfig().proxy.apiPrefix); // ran out -> "" -> default
+  });
+});
+
+describe("detectStack", () => {
+  function writePkg(pkg: unknown): void {
+    writeFileSync(join(dir, "package.json"), JSON.stringify(pkg), "utf8");
+  }
+
+  it("detects Next.js on the frontend", () => {
+    writePkg({ dependencies: { next: "14" }, scripts: { dev: "next dev" } });
+    const s = detectStack(dir);
+    expect(s.frontend).toEqual({ framework: "Next.js", command: "npm run dev", port: 3000 });
+  });
+
+  it("detects Vite on the frontend", () => {
+    writePkg({ devDependencies: { vite: "5" } });
+    expect(detectStack(dir).frontend).toMatchObject({ framework: "Vite", port: 5173 });
+  });
+
+  it("detects Express on the backend", () => {
+    writePkg({ dependencies: { express: "4" }, scripts: { server: "node server.js" } });
+    expect(detectStack(dir).backend).toEqual({
+      framework: "Express",
+      command: "npm run server",
+      port: 5000,
+    });
+  });
+
+  it("falls back to sensible defaults with no package.json", () => {
+    const s = detectStack(dir);
+    expect(s.frontend).toMatchObject({ framework: null, command: "npm run dev", port: 5173 });
+    expect(s.backend).toMatchObject({ framework: null, command: "npm run server", port: 5000 });
   });
 });

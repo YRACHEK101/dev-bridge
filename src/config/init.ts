@@ -4,6 +4,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { configSchema, type DevBridgeConfig } from "./schema.js";
 import { DEFAULT_CONFIG_FILENAME } from "./loadConfig.js";
+import { detectStack } from "./detect.js";
 
 /** A sensible starting config used as prompt defaults and non-interactive fallback. */
 export function defaultConfig(): DevBridgeConfig {
@@ -76,11 +77,18 @@ export async function runInit(options: InitOptions = {}): Promise<InitResult> {
     }
 
     const defaults = defaultConfig();
-    const frontendCommand = await ask(prompt, "Frontend command", defaults.frontend.command);
-    const frontendPort = await askPort(prompt, "Frontend port", defaults.frontend.port, output);
+    const detected = detectStack(cwd);
+    if (detected.frontend.framework || detected.backend.framework) {
+      output.write(
+        `Detected ${detected.frontend.framework ?? "frontend"} + ` +
+          `${detected.backend.framework ?? "backend"} — press Enter to accept the suggestions.\n`,
+      );
+    }
+    const frontendCommand = await ask(prompt, "Frontend command", detected.frontend.command);
+    const frontendPort = await askPort(prompt, "Frontend port", detected.frontend.port, output);
     const frontendCwd = await ask(prompt, "Frontend directory", defaults.frontend.cwd);
-    const backendCommand = await ask(prompt, "Backend command", defaults.backend.command);
-    const backendPort = await askPort(prompt, "Backend port", defaults.backend.port, output);
+    const backendCommand = await ask(prompt, "Backend command", detected.backend.command);
+    const backendPort = await askPort(prompt, "Backend port", detected.backend.port, output);
     const backendCwd = await ask(prompt, "Backend directory", defaults.backend.cwd);
     const proxyPort = await askPort(prompt, "Unified proxy port", defaults.proxy.port, output);
     const apiPrefix = await ask(prompt, "API path prefix", defaults.proxy.apiPrefix);

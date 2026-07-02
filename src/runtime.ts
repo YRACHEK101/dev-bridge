@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import type { DevBridgeConfig } from "./config/schema.js";
-import { loadConfig } from "./config/loadConfig.js";
+import { loadConfigFile } from "./config/loadConfig.js";
 import { ProcessManager } from "./process/processManager.js";
 import { LogAggregator } from "./logs/logAggregator.js";
 import { ProxyServer } from "./proxy/proxyServer.js";
@@ -46,7 +46,10 @@ export interface DevBridgeHandle {
  * dashboard. Returns a handle whose `shutdown()` tears it all down.
  */
 export async function startDevBridge(options: StartOptions = {}): Promise<DevBridgeHandle> {
-  const { config, baseDir } = loadConfig({ cwd: options.cwd, configPath: options.configPath });
+  const { config, baseDir } = await loadConfigFile({
+    cwd: options.cwd,
+    configPath: options.configPath,
+  });
   if (options.port !== undefined) config.proxy.port = options.port;
   if (options.host !== undefined) config.proxy.host = options.host;
   const useProxy = options.proxy !== false;
