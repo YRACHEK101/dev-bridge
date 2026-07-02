@@ -96,3 +96,38 @@ describe("port-conflict resolution", () => {
     ).rejects.toBeInstanceOf(PortInUseError);
   });
 });
+
+describe("wait-for-ready", () => {
+  const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
+  const server = `node "${join(fixtureDir, "dummy-server.cjs")}"`;
+  const idle = `node "${join(fixtureDir, "idle.cjs")}"`;
+
+  it("reports a service that never starts listening as notReady", async () => {
+    const [fe, be, px] = [
+      (await findFreePort(7000))!,
+      (await findFreePort(7100))!,
+      (await findFreePort(7200))!,
+    ];
+    dir = mkdtempSync(join(tmpdir(), "devbridge-ready-"));
+    writeFileSync(
+      join(dir, "dev-bridge.config.json"),
+      JSON.stringify({
+        // frontend really listens; backend is idle and never binds its port.
+        frontend: { command: server, port: fe, cwd: ".", host: "127.0.0.1" },
+        backend: { command: idle, port: be, cwd: ".", host: "127.0.0.1" },
+        proxy: { port: px, apiPrefix: "/api", host: "127.0.0.1" },
+      }),
+      "utf8",
+    );
+
+    handle = await startDevBridge({
+      cwd: dir,
+      quiet: true,
+      waitForReady: true,
+      readyTimeoutMs: 1500,
+    });
+
+    expect(handle.notReady).toContain("api");
+    expect(handle.notReady).not.toContain("web");
+  }, 10000);
+});

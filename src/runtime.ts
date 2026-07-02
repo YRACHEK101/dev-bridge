@@ -5,8 +5,9 @@ import { ProcessManager } from "./process/processManager.js";
 import { LogAggregator } from "./logs/logAggregator.js";
 import { ProxyServer } from "./proxy/proxyServer.js";
 import { attachDashboard, DASHBOARD_BASE_PATH, type DashboardHandle } from "./dashboard/server.js";
-import { isPortFree, findFreePort, PortInUseError } from "./utils/portCheck.js";
+import { isPortFree, findFreePort, waitForPort, PortInUseError } from "./utils/portCheck.js";
 import { checkEnvFiles, type EnvWarning } from "./utils/envGuard.js";
+import type { ServiceConfig } from "./config/schema.js";
 
 export interface StartOptions {
   cwd?: string;
@@ -23,6 +24,10 @@ export interface StartOptions {
   strictPort?: boolean;
   /** Compare .env.example vs .env and report missing vars (default true). */
   checkEnv?: boolean;
+  /** Wait for each service to start listening before resolving (default false). */
+  waitForReady?: boolean;
+  /** Timeout for the wait-for-ready phase (default 30000ms). */
+  readyTimeoutMs?: number;
   /** Suppress merged log output (used by tests). */
   quiet?: boolean;
 }
@@ -36,8 +41,29 @@ export interface DevBridgeHandle {
   proxyPortReassignedFrom?: number;
   /** Advisory .env warnings (empty when checkEnv is false or none found). */
   envWarnings: EnvWarning[];
+  /** Source labels of services that did not become ready in time (if waited). */
+  notReady: string[];
   /** Stop the dashboard, proxy, and all child processes. Idempotent. */
   shutdown(): Promise<void>;
+}
+
+/** Wait for a single service to accept connections (or respond on readyPath). */
+async function waitForService(service: ServiceConfig, timeoutMs: number): Promise<boolean> {
+  const host = service.host;
+  if (service.readyPath) {
+    const url = `http://${host}:${service.port}${service.readyPath}`;
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      try {
+        await fetch(url);
+        return true;
+      } catch {
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    }
+    return false;
+  }
+  return waitForPort(service.port, { host, timeoutMs });
 }
 
 /**
@@ -110,6 +136,23 @@ export async function startDevBridge(options: StartOptions = {}): Promise<DevBri
     }
   }
 
+  // Optionally wait for both services to start listening before we report ready.
+  let notReady: string[] = [];
+  if (options.waitForReady) {
+    const timeoutMs = options.readyTimeoutMs ?? 30000;
+    const services: Array<{ source: string; service: ServiceConfig }> = [
+      { source: config.frontend.name ?? "web", service: config.frontend },
+      { source: config.backend.name ?? "api", service: config.backend },
+    ];
+    const results = await Promise.all(
+      services.map(async ({ source, service }) => ({
+        source,
+        ready: await waitForService(service, timeoutMs),
+      })),
+    );
+    notReady = results.filter((r) => !r.ready).map((r) => r.source);
+  }
+
   let stopped = false;
   const shutdown = async (): Promise<void> => {
     if (stopped) return;
@@ -119,5 +162,14 @@ export async function startDevBridge(options: StartOptions = {}): Promise<DevBri
     await manager.stopAll();
   };
 
-  return { config, manager, proxy, dashboard, proxyPortReassignedFrom, envWarnings, shutdown };
+  return {
+    config,
+    manager,
+    proxy,
+    dashboard,
+    proxyPortReassignedFrom,
+    envWarnings,
+    notReady,
+    shutdown,
+  };
 }

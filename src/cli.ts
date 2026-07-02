@@ -69,6 +69,7 @@ interface StartCliOptions {
   dashboard?: boolean;
   strictPort?: boolean;
   envCheck?: boolean; // commander sets false when --no-env-check is passed
+  wait?: boolean; // commander sets false when --no-wait is passed
 }
 
 async function startAction(opts: StartCliOptions): Promise<void> {
@@ -101,6 +102,7 @@ async function startAction(opts: StartCliOptions): Promise<void> {
       dashboard: wantDashboard,
       strictPort: opts.strictPort,
       checkEnv: opts.envCheck,
+      waitForReady: opts.wait !== false,
     });
   } catch (err) {
     printError(err);
@@ -116,6 +118,11 @@ async function startAction(opts: StartCliOptions): Promise<void> {
     );
   }
   printEnvWarnings(handle.envWarnings);
+  for (const source of handle.notReady) {
+    process.stderr.write(
+      chalk.red(`  ⚠ "${source}" did not start listening in time — its requests may fail.\n`),
+    );
+  }
 
   const dashboardUrl = handle.dashboard?.url(handle.config.proxy.port);
   printBanner(handle.config, handle.proxy !== undefined, dashboardUrl);
@@ -189,6 +196,7 @@ export function buildProgram(): Command {
     .option("-d, --dashboard", "open a live request-timeline dashboard in the browser")
     .option("--strict-port", "fail if the proxy port is taken (default: auto-pick a free one)")
     .option("--no-env-check", "skip the .env.example vs .env check")
+    .option("--no-wait", "don't wait for the servers to start listening before showing the banner")
     .action(startAction);
 
   program

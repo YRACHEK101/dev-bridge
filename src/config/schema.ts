@@ -23,6 +23,11 @@ export const serviceSchema = z.object({
   host: z.string().min(1).default("localhost"),
   /** Extra environment variables for the spawned process. */
   env: z.record(z.string(), z.string()).optional(),
+  /**
+   * Optional health path (e.g. "/health"). When set, wait-for-ready polls this
+   * URL for a response instead of just checking the TCP port.
+   */
+  readyPath: z.string().startsWith("/").optional(),
   /** Optional human label; falls back to "web"/"api" at the call site. */
   name: z.string().min(1).optional(),
 });
