@@ -53,7 +53,7 @@ describe("dashboard", () => {
     const res = await fetch(`http://127.0.0.1:${port}${DASHBOARD_BASE_PATH}`);
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("dev-bridge");
+    expect(html).toContain("portbridge");
     expect(html).toContain("live request timeline");
   });
 

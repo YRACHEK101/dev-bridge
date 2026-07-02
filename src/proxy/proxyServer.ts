@@ -66,7 +66,7 @@ export class ProxyServer {
       changeOrigin: true,
       ws: true, // forward HMR / websocket upgrades to the frontend
       // Never proxy the reserved dashboard path. Without this, hpm's WS
-      // auto-subscription would hijack the dashboard's own /_devbridge/ws
+      // auto-subscription would hijack the dashboard's own /_portbridge/ws
       // upgrade and pipe it to the (non-WS) frontend server.
       pathFilter: (pathname: string) => !this.isReserved(pathname),
     }) as UpgradeCapable;

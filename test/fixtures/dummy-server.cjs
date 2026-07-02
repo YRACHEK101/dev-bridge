@@ -1,4 +1,4 @@
-// A tiny HTTP server used by integration/e2e tests. Spawned by dev-bridge, so it
+// A tiny HTTP server used by integration/e2e tests. Spawned by portbridge, so it
 // reads PORT (injected) and DUMMY_KIND (from the service's `env`) — no shell
 // quoting, which keeps it identical across macOS/Linux/Windows.
 const http = require("node:http");

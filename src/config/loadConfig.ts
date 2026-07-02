@@ -3,17 +3,17 @@ import { dirname, extname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createJiti } from "jiti";
 import { ZodError } from "zod";
-import { configSchema, type DevBridgeConfig } from "./schema.js";
+import { configSchema, type PortBridgeConfig } from "./schema.js";
 
-export const DEFAULT_CONFIG_FILENAME = "dev-bridge.config.json";
+export const DEFAULT_CONFIG_FILENAME = "portbridge.config.json";
 
 /** Config filenames searched, in priority order, when no explicit path is given. */
 export const CONFIG_FILENAMES = [
-  "dev-bridge.config.json",
-  "dev-bridge.config.js",
-  "dev-bridge.config.mjs",
-  "dev-bridge.config.cjs",
-  "dev-bridge.config.ts",
+  "portbridge.config.json",
+  "portbridge.config.js",
+  "portbridge.config.mjs",
+  "portbridge.config.cjs",
+  "portbridge.config.ts",
 ];
 
 /** Thrown for any config problem, with a human-readable, multi-line message. */
@@ -26,7 +26,7 @@ export class ConfigError extends Error {
 
 export interface LoadedConfig {
   /** The validated, typed config with defaults applied. */
-  config: DevBridgeConfig;
+  config: PortBridgeConfig;
   /** Absolute path to the config file that was read. */
   configPath: string;
   /**
@@ -54,7 +54,7 @@ export function resolveConfigPath(options: LoadConfigOptions = {}): string {
 
 /**
  * Resolve the config path, searching for any supported extension
- * (dev-bridge.config.{json,js,mjs,cjs,ts}) when no explicit path is given.
+ * (portbridge.config.{json,js,mjs,cjs,ts}) when no explicit path is given.
  */
 export function findConfigPath(options: LoadConfigOptions = {}): string {
   const cwd = options.cwd ?? process.cwd();
@@ -77,7 +77,7 @@ export async function loadConfigFile(options: LoadConfigOptions = {}): Promise<L
   if (!existsSync(configPath)) {
     throw new ConfigError(
       `No config file found (looked for ${CONFIG_FILENAMES.join(", ")}).\n` +
-        `Run "dev-bridge init" to create one, or pass --config <path>.`,
+        `Run "portbridge init" to create one, or pass --config <path>.`,
     );
   }
 
@@ -101,7 +101,7 @@ export async function loadConfigFile(options: LoadConfigOptions = {}): Promise<L
 }
 
 /**
- * Read, parse, and validate the dev-bridge config. Throws a {@link ConfigError}
+ * Read, parse, and validate the portbridge config. Throws a {@link ConfigError}
  * with an actionable message when the file is missing, is not valid JSON, or
  * fails schema validation.
  */
@@ -111,7 +111,7 @@ export function loadConfig(options: LoadConfigOptions = {}): LoadedConfig {
   if (!existsSync(configPath)) {
     throw new ConfigError(
       `No config file found at ${configPath}\n` +
-        `Run "dev-bridge init" to create one, or pass --config <path>.`,
+        `Run "portbridge init" to create one, or pass --config <path>.`,
     );
   }
 
@@ -150,8 +150,8 @@ function formatZodError(error: ZodError, configPath: string): string {
     return `  - ${path}: ${issue.message}`;
   });
   return (
-    `Invalid dev-bridge config at ${configPath}:\n` +
+    `Invalid portbridge config at ${configPath}:\n` +
     lines.join("\n") +
-    `\n\nSee the example config in the README or run "dev-bridge init".`
+    `\n\nSee the example config in the README or run "portbridge init".`
   );
 }

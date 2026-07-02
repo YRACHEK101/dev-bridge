@@ -1,5 +1,5 @@
 // Minimal dependency-free "frontend" dev server. It serves the single page for
-// every request; dev-bridge only forwards non-/api paths here.
+// every request; portbridge only forwards non-/api paths here.
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");

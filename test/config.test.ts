@@ -16,7 +16,7 @@ import {
 let dir: string;
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "devbridge-config-"));
+  dir = mkdtempSync(join(tmpdir(), "portbridge-config-"));
 });
 
 afterEach(() => {
@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 function writeConfigFile(contents: unknown | string): string {
-  const path = join(dir, "dev-bridge.config.json");
+  const path = join(dir, "portbridge.config.json");
   const body = typeof contents === "string" ? contents : JSON.stringify(contents);
   writeFileSync(path, body, "utf8");
   return path;
@@ -127,7 +127,7 @@ describe("loadConfig", () => {
 describe("loadConfigFile (multi-format)", () => {
   it("loads a .json config", async () => {
     writeFileSync(
-      join(dir, "dev-bridge.config.json"),
+      join(dir, "portbridge.config.json"),
       JSON.stringify({
         frontend: { command: "npm run dev", port: 5173 },
         backend: { command: "npm run server", port: 5000 },
@@ -141,7 +141,7 @@ describe("loadConfigFile (multi-format)", () => {
 
   it("loads and validates a .mjs config (via jiti)", async () => {
     writeFileSync(
-      join(dir, "dev-bridge.config.mjs"),
+      join(dir, "portbridge.config.mjs"),
       [
         "export default {",
         "  frontend: { command: 'vite', port: 5173 },",
@@ -159,7 +159,7 @@ describe("loadConfigFile (multi-format)", () => {
 
   it("reports schema errors from a .mjs config", async () => {
     writeFileSync(
-      join(dir, "dev-bridge.config.mjs"),
+      join(dir, "portbridge.config.mjs"),
       "export default { frontend: { command: 'x' } };", // missing port + backend
       "utf8",
     );

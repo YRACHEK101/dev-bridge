@@ -46,7 +46,7 @@ export const proxySchema = z.object({
 });
 
 /**
- * The full `dev-bridge.config.json` schema. `.strict()` rejects unknown top
+ * The full `portbridge.config.json` schema. `.strict()` rejects unknown top
  * level keys so typos (e.g. "fronend") surface as clear errors instead of
  * being silently ignored.
  */
@@ -62,4 +62,4 @@ export const configSchema = z
 
 export type ServiceConfig = z.infer<typeof serviceSchema>;
 export type ProxyConfig = z.infer<typeof proxySchema>;
-export type DevBridgeConfig = z.infer<typeof configSchema>;
+export type PortBridgeConfig = z.infer<typeof configSchema>;

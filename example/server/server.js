@@ -1,5 +1,5 @@
 // Minimal dependency-free "backend" — an in-memory todos API.
-// dev-bridge routes /api/* here (see ../dev-bridge.config.json).
+// portbridge routes /api/* here (see ../portbridge.config.json).
 const http = require("node:http");
 
 const PORT = process.env.PORT || 5000;

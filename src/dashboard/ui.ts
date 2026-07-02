@@ -6,7 +6,7 @@ export const DASHBOARD_HTML = `<!doctype html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>dev-bridge · request timeline</title>
+<title>portbridge · request timeline</title>
 <style>
   :root {
     --bg: #0f1117; --panel: #171a23; --border: #262b38; --text: #e6e9ef;
@@ -46,7 +46,7 @@ export const DASHBOARD_HTML = `<!doctype html>
 </head>
 <body>
   <header>
-    <h1>dev-bridge</h1>
+    <h1>portbridge</h1>
     <span class="sub">live request timeline</span>
     <span id="status" class="down">connecting…</span>
   </header>

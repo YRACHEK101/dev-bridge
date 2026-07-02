@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { execa } from "execa";
 import { ProcessManager } from "../src/process/processManager.js";
 import { spawnProcess } from "../src/process/spawnProcess.js";
-import type { DevBridgeConfig } from "../src/config/schema.js";
+import type { PortBridgeConfig } from "../src/config/schema.js";
 import type { SpawnFn, Subprocess } from "../src/process/spawnProcess.js";
 
 /** Controllable fake child process for deterministic unit tests. */
@@ -23,7 +23,7 @@ class FakeSubprocess extends EventEmitter implements Subprocess {
   }
 }
 
-function makeConfig(overrides: Partial<DevBridgeConfig> = {}): DevBridgeConfig {
+function makeConfig(overrides: Partial<PortBridgeConfig> = {}): PortBridgeConfig {
   return {
     frontend: { command: "npm run dev", port: 5173, cwd: "./client" },
     backend: { command: "npm run server", port: 5000, cwd: "./server" },

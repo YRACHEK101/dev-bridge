@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="assets/logo-banner.png" alt="dev-bridge" width="620" />
+  <img src="assets/logo-banner.png" alt="portbridge" width="620" />
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/dev-bridge"><img src="https://img.shields.io/npm/v/dev-bridge?color=22d3ee&label=npm" alt="npm version" /></a>
-  <a href="https://www.npmjs.com/package/dev-bridge"><img src="https://img.shields.io/npm/dm/dev-bridge?color=c084fc" alt="downloads" /></a>
-  <img src="https://img.shields.io/node/v/dev-bridge?color=3c873a" alt="node version" />
-  <img src="https://img.shields.io/npm/l/dev-bridge?color=blue" alt="license" />
+  <a href="https://www.npmjs.com/package/portbridge"><img src="https://img.shields.io/npm/v/portbridge?color=22d3ee&label=npm" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/portbridge"><img src="https://img.shields.io/npm/dm/portbridge?color=c084fc" alt="downloads" /></a>
+  <img src="https://img.shields.io/node/v/portbridge?color=3c873a" alt="node version" />
+  <img src="https://img.shields.io/npm/l/portbridge?color=blue" alt="license" />
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 Running a separate frontend (Next.js / Vite / CRA) and backend (Express / any
 Node server) locally means scattered ports, manual CORS config, logs split
 across terminals, and no visibility into requests crossing the front↔back
-boundary. `dev-bridge` fixes that:
+boundary. `portbridge` fixes that:
 
 - 🔗 **One unified port.** The browser only ever talks to `:4000`. Requests to
   `/api/*` are proxied to your backend, everything else to your frontend — so
@@ -61,13 +61,13 @@ Go to your project's root folder (the one with your frontend and backend), then:
 
 ```bash
 cd my-project
-npx dev-bridge init
+npx portbridge init
 ```
 
 `init` **auto-detects** your stack (Next.js / Vite / CRA on the frontend;
 Express / Fastify / Koa / NestJS on the backend) and pre-fills the commands and
 ports — press **Enter** to accept each suggestion or type your own. It writes a
-`dev-bridge.config.json`:
+`portbridge.config.json`:
 
 ```json
 {
@@ -83,7 +83,7 @@ ports — press **Enter** to accept each suggestion or type your own. It writes 
 ### 3. Start both servers
 
 ```bash
-npx dev-bridge              # add --dashboard for the live request timeline
+npx portbridge              # add --dashboard for the live request timeline
 ```
 
 You'll get a banner with the **unified URL** and both servers' logs merged into
@@ -95,13 +95,13 @@ Open **http://localhost:4000** in your browser. Your frontend loads, and any
 call it makes to `/api/...` is forwarded to your backend on the **same origin**
 — so there's **no CORS to configure**. Press **Ctrl+C** to stop everything.
 
-> **Use it everywhere:** install once with `npm install -g dev-bridge`, then just
-> run `dev-bridge` (instead of `npx dev-bridge`) in any project.
+> **Use it everywhere:** install once with `npm install -g portbridge`, then just
+> run `portbridge` (instead of `npx portbridge`) in any project.
 
 ## Configuration
 
-`dev-bridge` reads its config from the current directory (or `--config <path>`).
-Supported formats: `dev-bridge.config.{json,js,mjs,cjs,ts}` — JS/TS configs are
+`portbridge` reads its config from the current directory (or `--config <path>`).
+Supported formats: `portbridge.config.{json,js,mjs,cjs,ts}` — JS/TS configs are
 loaded via [jiti](https://github.com/unjs/jiti), so you can use comments and
 computed values.
 
@@ -128,7 +128,7 @@ computed values.
 | `proxy.apiPrefix`                   | requests under this path go to the backend (default `/api`)         |
 | `restartOnCrash`                    | auto-restart a server if it exits non-zero (default `false`)        |
 
-> **`PORT` is injected.** dev-bridge sets `PORT=<the configured port>` in each
+> **`PORT` is injected.** portbridge sets `PORT=<the configured port>` in each
 > server's environment, so servers that read `process.env.PORT` bind the right
 > port automatically. Otherwise, make the server listen on the `port` you
 > configure (e.g. Vite's `server.port`). A per-service `env` value wins over the
@@ -137,15 +137,15 @@ computed values.
 ## CLI
 
 ```
-dev-bridge [start] [options]     # "start" is the default command
-dev-bridge init [options]
+portbridge [start] [options]     # "start" is the default command
+portbridge init [options]
 
 Start options:
-  -c, --config <path>   path to dev-bridge.config.json
+  -c, --config <path>   path to portbridge.config.json
   -p, --port <number>   unified proxy port (overrides config)
   -H, --host <host>     interface to bind (default 127.0.0.1; use 0.0.0.0 for LAN)
   -d, --dashboard       open a live request-timeline dashboard
-  -v, --verbose         print [dev-bridge] diagnostics about the startup sequence
+  -v, --verbose         print [portbridge] diagnostics about the startup sequence
       --no-proxy        run servers + merged logs without the proxy
       --no-wait         don't wait for the servers to start listening first
       --strict-port     fail if the proxy port is taken (default: auto-pick free)
@@ -158,7 +158,7 @@ Init options:
   -f, --force           overwrite an existing config
 
 Env:
-  DEV_BRIDGE_NO_OPEN=1  don't auto-open the dashboard browser (CI/headless)
+  PORTBRIDGE_NO_OPEN=1  don't auto-open the dashboard browser (CI/headless)
 ```
 
 ## How routing works
@@ -177,10 +177,10 @@ are forwarded to the frontend automatically.
 ## What it looks like
 
 ```text
-  dev-bridge  ·  one port for your whole stack
+  portbridge  ·  one port for your whole stack
 
   Open       http://localhost:4000
-  Dashboard  http://localhost:4000/_devbridge
+  Dashboard  http://localhost:4000/_portbridge
   Frontend   npm run dev     → :5173
   Backend    npm run server  → :5000  /api/*
 
@@ -193,7 +193,7 @@ are forwarded to the frontend automatically.
 
 Frontend lines are cyan, backend magenta, errors red — all interleaved in one
 terminal, in real time. With `--dashboard`, the same requests stream into a live
-timeline at `/_devbridge`.
+timeline at `/_portbridge`.
 
 ## Why not just `concurrently` + CORS?
 
@@ -206,7 +206,7 @@ it. You still:
 - read **interleaved-but-unlabelled** logs with no per-line source or timing;
 - have **no view** of requests crossing the front↔back boundary.
 
-`dev-bridge` gives you **one origin** (no CORS), **labelled/timed merged logs**,
+`portbridge` gives you **one origin** (no CORS), **labelled/timed merged logs**,
 a **live request dashboard**, plus quality-of-life guards (port auto-resolution,
 `.env` check, wait-for-ready, crash restart). It's the "run both servers" step
 _plus_ the glue you'd otherwise wire by hand.
@@ -217,16 +217,16 @@ A runnable, dependency-free demo lives in [`example/`](./example) — a tiny tod
 app. From that folder:
 
 ```bash
-node ../bin/dev-bridge.js --dashboard   # or `npx dev-bridge --dashboard`
+node ../bin/portbridge.js --dashboard   # or `npx portbridge --dashboard`
 ```
 
-…then open http://localhost:4000 and http://localhost:4000/_devbridge.
+…then open http://localhost:4000 and http://localhost:4000/_portbridge.
 
 ## Notes
 
 - **ESM-only.** This is a modern Node ≥20 CLI; two core dependencies (`execa`,
   `chalk`) are pure ESM, so there is no CommonJS build.
-- The dashboard is served at `/_devbridge` on the unified port; that path is
+- The dashboard is served at `/_portbridge` on the unified port; that path is
   reserved (never proxied to your app).
 - **Local by default.** The proxy binds `127.0.0.1`, so your app and dashboard
   aren't exposed on the network. Use `--host 0.0.0.0` (or `proxy.host`) to allow
@@ -238,7 +238,7 @@ node ../bin/dev-bridge.js --dashboard   # or `npx dev-bridge --dashboard`
 ## Platform support
 
 Developed and tested on **macOS** and **Linux**, and exercised on **Windows** in
-CI (Node 20 & 22 across all three via GitHub Actions). On POSIX, dev-bridge
+CI (Node 20 & 22 across all three via GitHub Actions). On POSIX, portbridge
 signals the whole process group on shutdown; on Windows it uses `taskkill /T` to
 stop the process tree.
 

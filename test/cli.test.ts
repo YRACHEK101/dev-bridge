@@ -13,9 +13,9 @@ describe("buildProgram", () => {
   const program = buildProgram();
   const commands = Object.fromEntries(program.commands.map((c) => [c.name(), c]));
 
-  it("exposes start and init commands under the dev-bridge program", () => {
+  it("exposes start and init commands under the portbridge program", () => {
     expect(Object.keys(commands).sort()).toEqual(["init", "start"]);
-    expect(program.name()).toBe("dev-bridge");
+    expect(program.name()).toBe("portbridge");
   });
 
   it("wires the documented start flags", () => {

@@ -4,14 +4,14 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { findFreePort, isPortFree } from "../src/utils/portCheck.js";
-import { startDevBridge, type DevBridgeHandle } from "../src/runtime.js";
+import { startPortBridge, type PortBridgeHandle } from "../src/runtime.js";
 import type { RequestRecord } from "../src/proxy/requestTracker.js";
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // A real fixture script (not an inline `node -e` string) so the spawned command
 // has no shell-quoting and behaves identically on macOS/Linux/Windows. The
-// server reads PORT (injected by dev-bridge) and DUMMY_KIND (per-service env).
+// server reads PORT (injected by portbridge) and DUMMY_KIND (per-service env).
 const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 const dummyServer = join(fixtureDir, "dummy-server.cjs");
 const serverCommand = () => `node "${dummyServer}"`;
@@ -31,7 +31,7 @@ async function waitForOk(url: string, timeoutMs = 8000): Promise<void> {
   throw new Error(`server never became ready: ${url}`);
 }
 
-let handle: DevBridgeHandle | undefined;
+let handle: PortBridgeHandle | undefined;
 let dir: string | undefined;
 
 afterEach(async () => {
@@ -48,7 +48,7 @@ describe("end-to-end", () => {
     const proxyPort = await findFreePort((backendPort ?? 6200) + 1);
     expect(frontendPort && backendPort && proxyPort).toBeTruthy();
 
-    dir = mkdtempSync(join(tmpdir(), "devbridge-e2e-"));
+    dir = mkdtempSync(join(tmpdir(), "portbridge-e2e-"));
     const config = {
       frontend: {
         command: serverCommand(),
@@ -66,9 +66,9 @@ describe("end-to-end", () => {
       },
       proxy: { port: proxyPort, apiPrefix: "/api", host: "127.0.0.1" },
     };
-    writeFileSync(join(dir, "dev-bridge.config.json"), JSON.stringify(config), "utf8");
+    writeFileSync(join(dir, "portbridge.config.json"), JSON.stringify(config), "utf8");
 
-    handle = await startDevBridge({ cwd: dir, quiet: true });
+    handle = await startPortBridge({ cwd: dir, quiet: true });
 
     const records: RequestRecord[] = [];
     handle.proxy!.tracker.on("request", (r: RequestRecord) => records.push(r));

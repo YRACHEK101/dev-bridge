@@ -2,12 +2,12 @@ import { writeFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
-import { configSchema, type DevBridgeConfig } from "./schema.js";
+import { configSchema, type PortBridgeConfig } from "./schema.js";
 import { DEFAULT_CONFIG_FILENAME } from "./loadConfig.js";
 import { detectStack } from "./detect.js";
 
 /** A sensible starting config used as prompt defaults and non-interactive fallback. */
-export function defaultConfig(): DevBridgeConfig {
+export function defaultConfig(): PortBridgeConfig {
   return configSchema.parse({
     frontend: { command: "npm run dev", port: 5173, cwd: "./client" },
     backend: { command: "npm run server", port: 5000, cwd: "./server" },
@@ -40,7 +40,7 @@ export interface InitResult {
 }
 
 /**
- * Interactively scaffold `dev-bridge.config.json`. Falls back to writing
+ * Interactively scaffold `portbridge.config.json`. Falls back to writing
  * defaults when there is no interactive TTY (e.g. CI) or when `yes` is set.
  */
 export async function runInit(options: InitOptions = {}): Promise<InitResult> {
@@ -107,7 +107,7 @@ export async function runInit(options: InitOptions = {}): Promise<InitResult> {
   }
 }
 
-function writeConfig(configPath: string, config: DevBridgeConfig, force: boolean): InitResult {
+function writeConfig(configPath: string, config: PortBridgeConfig, force: boolean): InitResult {
   if (existsSync(configPath) && !force) {
     return { configPath, written: false };
   }

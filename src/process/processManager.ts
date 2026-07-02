@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { resolve } from "node:path";
-import type { DevBridgeConfig, ServiceConfig } from "../config/schema.js";
+import type { PortBridgeConfig, ServiceConfig } from "../config/schema.js";
 import {
   ProcessHandle,
   spawnProcess,
@@ -64,7 +64,7 @@ export class ProcessManager extends EventEmitter {
   private readonly healthyResetMs: number;
   private shuttingDown = false;
 
-  constructor(config: DevBridgeConfig, options: ProcessManagerOptions) {
+  constructor(config: PortBridgeConfig, options: ProcessManagerOptions) {
     super();
     this.spawn = options.spawn;
     this.restartOnCrash = config.restartOnCrash;

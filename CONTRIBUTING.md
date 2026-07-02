@@ -1,4 +1,4 @@
-# Contributing to dev-bridge
+# Contributing to portbridge
 
 Thanks for helping out! This project aims to stay small, framework-agnostic, and
 trustworthy. Please read the design decisions below before making changes.
@@ -7,7 +7,7 @@ trustworthy. Please read the design decisions below before making changes.
 
 ```bash
 git clone https://github.com/YRACHEK101/dev-bridge.git
-cd dev-bridge
+cd portbridge
 npm install
 ```
 
@@ -34,8 +34,8 @@ A dependency-free demo lives in [`example/`](./example):
 
 ```bash
 cd example
-node ../bin/dev-bridge.js --dashboard   # after `npm run build` at the repo root
-# then open http://localhost:4000 and http://localhost:4000/_devbridge
+node ../bin/portbridge.js --dashboard   # after `npm run build` at the repo root
+# then open http://localhost:4000 and http://localhost:4000/_portbridge
 ```
 
 ## Tests
@@ -57,9 +57,9 @@ fixes:
 2. **The dashboard UI is embedded as a string** ([src/dashboard/ui.ts](./src/dashboard/ui.ts)),
    not shipped as static files — this avoids asset-path resolution bugs across
    dev and the bundled `dist/`.
-3. **The proxy `pathFilter` excludes the dashboard prefix** (`/_devbridge`).
+3. **The proxy `pathFilter` excludes the dashboard prefix** (`/_portbridge`).
    Without it, `http-proxy-middleware`'s WebSocket auto-subscription hijacks the
-   dashboard's own `/_devbridge/ws` upgrade and pipes it to the (non-WS)
+   dashboard's own `/_portbridge/ws` upgrade and pipes it to the (non-WS)
    frontend.
 4. **`isPortFree` probes `127.0.0.1` specifically**, not all interfaces —
    `SO_REUSEADDR` gives false "free" results when probing all interfaces on

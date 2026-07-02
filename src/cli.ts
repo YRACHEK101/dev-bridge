@@ -1,19 +1,19 @@
 import { Command } from "commander";
 import chalk from "chalk";
-import { startDevBridge, type DevBridgeHandle } from "./runtime.js";
+import { startPortBridge, type PortBridgeHandle } from "./runtime.js";
 import { runInit } from "./config/init.js";
 import { ConfigError } from "./config/loadConfig.js";
 import { PortInUseError } from "./utils/portCheck.js";
 import { readPackageVersion } from "./utils/version.js";
 import { openBrowser } from "./utils/openBrowser.js";
 import type { EnvWarning } from "./utils/envGuard.js";
-import type { DevBridgeConfig } from "./config/schema.js";
+import type { PortBridgeConfig } from "./config/schema.js";
 
-function printBanner(config: DevBridgeConfig, useProxy: boolean, dashboardUrl?: string): void {
+function printBanner(config: PortBridgeConfig, useProxy: boolean, dashboardUrl?: string): void {
   const c = chalk;
   const lines: string[] = [
     "",
-    c.bold.green("  dev-bridge") + c.gray("  ·  one port for your whole stack"),
+    c.bold.green("  portbridge") + c.gray("  ·  one port for your whole stack"),
     "",
   ];
   if (useProxy) {
@@ -39,7 +39,7 @@ function printError(err: unknown): void {
     process.stderr.write(chalk.red(`\n${err.message}\n`));
   } else {
     const message = err instanceof Error ? err.message : String(err);
-    process.stderr.write(chalk.red(`\ndev-bridge failed: ${message}\n`));
+    process.stderr.write(chalk.red(`\nportbridge failed: ${message}\n`));
   }
 }
 
@@ -93,9 +93,9 @@ async function startAction(opts: StartCliOptions): Promise<void> {
     wantDashboard = false;
   }
 
-  let handle: DevBridgeHandle;
+  let handle: PortBridgeHandle;
   try {
-    handle = await startDevBridge({
+    handle = await startPortBridge({
       configPath: opts.config,
       port,
       host: opts.host,
@@ -129,7 +129,7 @@ async function startAction(opts: StartCliOptions): Promise<void> {
   const dashboardUrl = handle.dashboard?.url(handle.config.proxy.port);
   printBanner(handle.config, handle.proxy !== undefined, dashboardUrl);
   // Auto-open the dashboard, unless disabled (CI/headless/scripted runs).
-  if (dashboardUrl && !process.env.DEV_BRIDGE_NO_OPEN) {
+  if (dashboardUrl && !process.env.PORTBRIDGE_NO_OPEN) {
     void openBrowser(dashboardUrl);
   }
 
@@ -184,14 +184,14 @@ async function initAction(opts: InitCliOptions): Promise<void> {
 export function buildProgram(): Command {
   const program = new Command();
   program
-    .name("dev-bridge")
+    .name("portbridge")
     .description("Run your frontend + backend dev servers behind one unified port.")
     .version(readPackageVersion());
 
   program
     .command("start", { isDefault: true })
     .description("Start both dev servers behind the unified proxy")
-    .option("-c, --config <path>", "path to dev-bridge.config.json")
+    .option("-c, --config <path>", "path to portbridge.config.json")
     .option("-p, --port <number>", "unified proxy port (overrides config)")
     .option("-H, --host <host>", "interface to bind (default 127.0.0.1; use 0.0.0.0 for LAN)")
     .option("--no-proxy", "run servers with merged logs but without the proxy")
@@ -199,12 +199,12 @@ export function buildProgram(): Command {
     .option("--strict-port", "fail if the proxy port is taken (default: auto-pick a free one)")
     .option("--no-env-check", "skip the .env.example vs .env check")
     .option("--no-wait", "don't wait for the servers to start listening before showing the banner")
-    .option("-v, --verbose", "print [dev-bridge] diagnostics about the startup sequence")
+    .option("-v, --verbose", "print [portbridge] diagnostics about the startup sequence")
     .action(startAction);
 
   program
     .command("init")
-    .description("Scaffold a dev-bridge.config.json in the current directory")
+    .description("Scaffold a portbridge.config.json in the current directory")
     .option("-y, --yes", "write defaults without prompting")
     .option("-f, --force", "overwrite an existing config")
     .action(initAction);

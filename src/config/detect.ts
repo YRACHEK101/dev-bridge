@@ -66,7 +66,7 @@ function detectBackend(pkg: PackageJson | null): ServiceSuggestion {
 /**
  * Best-effort guess of the frontend/backend commands and ports from the
  * project's package.json (checks cwd and common subdirs). Purely to pre-fill
- * `dev-bridge init` prompts — the user can override every value.
+ * `portbridge init` prompts — the user can override every value.
  */
 export function detectStack(cwd: string): StackSuggestion {
   const root = readPackageJson(cwd);

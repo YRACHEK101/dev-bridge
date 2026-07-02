@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import chalk from "chalk";
-import type { DevBridgeConfig } from "./config/schema.js";
+import type { PortBridgeConfig } from "./config/schema.js";
 import { loadConfigFile } from "./config/loadConfig.js";
 import { ProcessManager } from "./process/processManager.js";
 import { LogAggregator } from "./logs/logAggregator.js";
@@ -29,14 +29,14 @@ export interface StartOptions {
   waitForReady?: boolean;
   /** Timeout for the wait-for-ready phase (default 30000ms). */
   readyTimeoutMs?: number;
-  /** Emit [dev-bridge] diagnostic lines about the startup sequence. */
+  /** Emit [portbridge] diagnostic lines about the startup sequence. */
   verbose?: boolean;
   /** Suppress merged log output (used by tests). */
   quiet?: boolean;
 }
 
-export interface DevBridgeHandle {
-  config: DevBridgeConfig;
+export interface PortBridgeHandle {
+  config: PortBridgeConfig;
   manager: ProcessManager;
   proxy?: ProxyServer;
   dashboard?: DashboardHandle;
@@ -74,10 +74,10 @@ async function waitForService(service: ServiceConfig, timeoutMs: number): Promis
  * processes -> merge logs -> start the unified proxy -> (optionally) mount the
  * dashboard. Returns a handle whose `shutdown()` tears it all down.
  */
-export async function startDevBridge(options: StartOptions = {}): Promise<DevBridgeHandle> {
+export async function startPortBridge(options: StartOptions = {}): Promise<PortBridgeHandle> {
   const diag = (msg: string): void => {
     if (options.verbose && !options.quiet) {
-      process.stdout.write(chalk.gray(`[dev-bridge] ${msg}\n`));
+      process.stdout.write(chalk.gray(`[portbridge] ${msg}\n`));
     }
   };
 
@@ -136,7 +136,7 @@ export async function startDevBridge(options: StartOptions = {}): Promise<DevBri
       diag(`proxy listening on ${config.proxy.host}:${config.proxy.port}`);
       if (useDashboard) {
         dashboard = attachDashboard({ app: proxy.app, server, tracker: proxy.tracker });
-        diag("dashboard mounted at /_devbridge");
+        diag("dashboard mounted at /_portbridge");
       }
     } catch (err) {
       // A crashing proxy must not leave orphaned dev servers behind.

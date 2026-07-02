@@ -6,10 +6,10 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkEnvFiles } from "../src/utils/envGuard.js";
 import { findFreePort, PortInUseError } from "../src/utils/portCheck.js";
-import { startDevBridge, type DevBridgeHandle } from "../src/runtime.js";
+import { startPortBridge, type PortBridgeHandle } from "../src/runtime.js";
 
 let dir: string | undefined;
-let handle: DevBridgeHandle | undefined;
+let handle: PortBridgeHandle | undefined;
 let blocker: Server | undefined;
 
 afterEach(async () => {
@@ -30,7 +30,7 @@ function occupy(port: number): Promise<Server> {
 
 describe("checkEnvFiles", () => {
   it("reports keys present in .env.example but missing from .env", () => {
-    dir = mkdtempSync(join(tmpdir(), "devbridge-env-"));
+    dir = mkdtempSync(join(tmpdir(), "portbridge-env-"));
     writeFileSync(join(dir, ".env.example"), "API_URL=\n# comment\nSECRET=\nPORT=3000\n");
     writeFileSync(join(dir, ".env"), "API_URL=http://localhost\nPORT=3000\n");
 
@@ -41,7 +41,7 @@ describe("checkEnvFiles", () => {
   });
 
   it("flags a missing .env entirely when an example exists", () => {
-    dir = mkdtempSync(join(tmpdir(), "devbridge-env-"));
+    dir = mkdtempSync(join(tmpdir(), "portbridge-env-"));
     writeFileSync(join(dir, ".env.example"), "A=\nB=\n");
 
     const [warning] = checkEnvFiles([dir]);
@@ -50,7 +50,7 @@ describe("checkEnvFiles", () => {
   });
 
   it("returns no warnings when there is no .env.example", () => {
-    dir = mkdtempSync(join(tmpdir(), "devbridge-env-"));
+    dir = mkdtempSync(join(tmpdir(), "portbridge-env-"));
     writeFileSync(join(dir, ".env"), "A=1\n");
     expect(checkEnvFiles([dir])).toEqual([]);
   });
@@ -63,9 +63,9 @@ describe("port-conflict resolution", () => {
   const idle = `node "${idleScript}"`;
 
   function writeConfig(proxyPort: number): void {
-    dir = mkdtempSync(join(tmpdir(), "devbridge-port-"));
+    dir = mkdtempSync(join(tmpdir(), "portbridge-port-"));
     writeFileSync(
-      join(dir, "dev-bridge.config.json"),
+      join(dir, "portbridge.config.json"),
       JSON.stringify({
         frontend: { command: idle, port: 5173, cwd: "." },
         backend: { command: idle, port: 5000, cwd: "." },
@@ -80,7 +80,7 @@ describe("port-conflict resolution", () => {
     blocker = await occupy(busy);
     writeConfig(busy);
 
-    handle = await startDevBridge({ cwd: dir, quiet: true });
+    handle = await startPortBridge({ cwd: dir, quiet: true });
     expect(handle.proxyPortReassignedFrom).toBe(busy);
     expect(handle.config.proxy.port).not.toBe(busy);
     expect(handle.proxy).toBeDefined();
@@ -92,7 +92,7 @@ describe("port-conflict resolution", () => {
     writeConfig(busy);
 
     await expect(
-      startDevBridge({ cwd: dir, quiet: true, strictPort: true }),
+      startPortBridge({ cwd: dir, quiet: true, strictPort: true }),
     ).rejects.toBeInstanceOf(PortInUseError);
   });
 });
@@ -108,9 +108,9 @@ describe("wait-for-ready", () => {
       (await findFreePort(7100))!,
       (await findFreePort(7200))!,
     ];
-    dir = mkdtempSync(join(tmpdir(), "devbridge-ready-"));
+    dir = mkdtempSync(join(tmpdir(), "portbridge-ready-"));
     writeFileSync(
-      join(dir, "dev-bridge.config.json"),
+      join(dir, "portbridge.config.json"),
       JSON.stringify({
         // frontend really listens; backend is idle and never binds its port.
         frontend: { command: server, port: fe, cwd: ".", host: "127.0.0.1" },
@@ -120,7 +120,7 @@ describe("wait-for-ready", () => {
       "utf8",
     );
 
-    handle = await startDevBridge({
+    handle = await startPortBridge({
       cwd: dir,
       quiet: true,
       waitForReady: true,

@@ -5,7 +5,7 @@ import { WebSocketServer, type WebSocket } from "ws";
 import type { RequestTracker, RequestRecord } from "../proxy/requestTracker.js";
 import { DASHBOARD_HTML } from "./ui.js";
 
-export const DASHBOARD_BASE_PATH = "/_devbridge";
+export const DASHBOARD_BASE_PATH = "/_portbridge";
 
 export interface DashboardOptions {
   app: Express;

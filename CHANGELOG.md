@@ -16,8 +16,8 @@ Initial release.
   prefix) routes to the backend, everything else to the frontend, so the app
   needs no CORS configuration. WebSocket upgrades (HMR) are forwarded to the
   frontend.
-- **Config** — `dev-bridge.config.json`, validated with zod (clear per-field
-  errors). `dev-bridge init` scaffolds it interactively (with a `--yes`
+- **Config** — `portbridge.config.json`, validated with zod (clear per-field
+  errors). `portbridge init` scaffolds it interactively (with a `--yes`
   non-interactive fallback).
 - **Process supervision** — spawns the frontend and backend, merges their
   stdout/stderr into one timestamped, prefixed, color-coded stream, and shuts
@@ -25,7 +25,7 @@ Initial release.
   on Windows). Optional `restartOnCrash` with a crash-loop cap that resets after
   a process has run healthy.
 - **Live dashboard** (`--dashboard`) — a self-contained request-timeline UI at
-  `/_devbridge`, streaming every proxied request over WebSocket with backlog
+  `/_portbridge`, streaming every proxied request over WebSocket with backlog
   replay.
 - **Guards** — auto-picks a free proxy port when the configured one is busy
   (`--strict-port` to fail instead); advisory `.env.example` vs `.env` check;

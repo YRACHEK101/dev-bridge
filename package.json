@@ -1,10 +1,10 @@
 {
-  "name": "dev-bridge",
+  "name": "portbridge",
   "version": "0.1.0",
   "description": "One command to run your frontend + backend dev servers behind a single unified proxy port — no CORS setup, merged logs, and a live request dashboard.",
   "type": "module",
   "bin": {
-    "dev-bridge": "bin/dev-bridge.js"
+    "portbridge": "bin/portbridge.js"
   },
   "files": [
     "bin",
