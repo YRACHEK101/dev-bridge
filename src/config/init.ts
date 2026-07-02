@@ -14,12 +14,23 @@ export function defaultConfig(): DevBridgeConfig {
   });
 }
 
+/** Asks one question and resolves the user's line. */
+export type PromptFn = (query: string) => Promise<string>;
+
 export interface InitOptions {
   cwd?: string;
   /** Skip prompts and write defaults (used when there is no TTY, or --yes). */
   yes?: boolean;
   /** Overwrite an existing config without asking. */
   force?: boolean;
+  /** Prompt input stream (default process.stdin). */
+  input?: NodeJS.ReadableStream;
+  /** Prompt output stream (default process.stdout). */
+  output?: NodeJS.WritableStream;
+  /** Whether to treat this as an interactive session (default: input.isTTY). */
+  isTTY?: boolean;
+  /** Inject the prompt function directly (used for testing). Forces interactive. */
+  prompt?: PromptFn;
 }
 
 export interface InitResult {
@@ -34,18 +45,29 @@ export interface InitResult {
 export async function runInit(options: InitOptions = {}): Promise<InitResult> {
   const cwd = options.cwd ?? process.cwd();
   const configPath = resolve(cwd, DEFAULT_CONFIG_FILENAME);
-  const interactive = !options.yes && stdin.isTTY === true;
+  const input = options.input ?? stdin;
+  const output = options.output ?? stdout;
+  const isTTY = options.isTTY ?? (input as NodeJS.ReadStream).isTTY === true;
+  const interactive = !options.yes && (options.prompt !== undefined || isTTY);
 
   if (!interactive) {
     return writeConfig(configPath, defaultConfig(), options.force ?? false);
   }
 
-  const rl = createInterface({ input: stdin, output: stdout });
+  // Use the injected prompt, or a readline-backed one over the given streams.
+  let close = () => {};
+  let prompt: PromptFn;
+  if (options.prompt) {
+    prompt = options.prompt;
+  } else {
+    const rl = createInterface({ input, output });
+    prompt = (query) => rl.question(query);
+    close = () => rl.close();
+  }
+
   try {
     if (existsSync(configPath) && !options.force) {
-      const answer = (
-        await rl.question(`${DEFAULT_CONFIG_FILENAME} already exists. Overwrite? (y/N) `)
-      )
+      const answer = (await prompt(`${DEFAULT_CONFIG_FILENAME} already exists. Overwrite? (y/N) `))
         .trim()
         .toLowerCase();
       if (answer !== "y" && answer !== "yes") {
@@ -54,14 +76,14 @@ export async function runInit(options: InitOptions = {}): Promise<InitResult> {
     }
 
     const defaults = defaultConfig();
-    const frontendCommand = await ask(rl, "Frontend command", defaults.frontend.command);
-    const frontendPort = await askPort(rl, "Frontend port", defaults.frontend.port);
-    const frontendCwd = await ask(rl, "Frontend directory", defaults.frontend.cwd);
-    const backendCommand = await ask(rl, "Backend command", defaults.backend.command);
-    const backendPort = await askPort(rl, "Backend port", defaults.backend.port);
-    const backendCwd = await ask(rl, "Backend directory", defaults.backend.cwd);
-    const proxyPort = await askPort(rl, "Unified proxy port", defaults.proxy.port);
-    const apiPrefix = await ask(rl, "API path prefix", defaults.proxy.apiPrefix);
+    const frontendCommand = await ask(prompt, "Frontend command", defaults.frontend.command);
+    const frontendPort = await askPort(prompt, "Frontend port", defaults.frontend.port, output);
+    const frontendCwd = await ask(prompt, "Frontend directory", defaults.frontend.cwd);
+    const backendCommand = await ask(prompt, "Backend command", defaults.backend.command);
+    const backendPort = await askPort(prompt, "Backend port", defaults.backend.port, output);
+    const backendCwd = await ask(prompt, "Backend directory", defaults.backend.cwd);
+    const proxyPort = await askPort(prompt, "Unified proxy port", defaults.proxy.port, output);
+    const apiPrefix = await ask(prompt, "API path prefix", defaults.proxy.apiPrefix);
 
     // Re-validate through the schema so an interactive typo can't produce an
     // invalid file.
@@ -73,7 +95,7 @@ export async function runInit(options: InitOptions = {}): Promise<InitResult> {
 
     return writeConfig(configPath, config, true);
   } finally {
-    rl.close();
+    close();
   }
 }
 
@@ -85,26 +107,23 @@ function writeConfig(configPath: string, config: DevBridgeConfig, force: boolean
   return { configPath, written: true };
 }
 
-async function ask(
-  rl: ReturnType<typeof createInterface>,
-  label: string,
-  fallback: string,
-): Promise<string> {
-  const answer = (await rl.question(`${label} [${fallback}]: `)).trim();
+async function ask(prompt: PromptFn, label: string, fallback: string): Promise<string> {
+  const answer = (await prompt(`${label} [${fallback}]: `)).trim();
   return answer.length > 0 ? answer : fallback;
 }
 
 async function askPort(
-  rl: ReturnType<typeof createInterface>,
+  prompt: PromptFn,
   label: string,
   fallback: number,
+  output: NodeJS.WritableStream,
 ): Promise<number> {
   // Re-prompt until a valid port is given, so we never build an invalid config.
   for (;;) {
-    const answer = (await rl.question(`${label} [${fallback}]: `)).trim();
+    const answer = (await prompt(`${label} [${fallback}]: `)).trim();
     if (answer.length === 0) return fallback;
     const port = Number(answer);
     if (Number.isInteger(port) && port >= 1 && port <= 65535) return port;
-    stdout.write(`  "${answer}" is not a valid port (1-65535). Try again.\n`);
+    output.write(`  "${answer}" is not a valid port (1-65535). Try again.\n`);
   }
 }

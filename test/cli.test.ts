@@ -1,8 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { buildProgram } from "../src/cli.js";
+import { buildProgram, installShutdown } from "../src/cli.js";
 import { openCommand } from "../src/utils/openBrowser.js";
 import { readPackageVersion } from "../src/utils/version.js";
 
@@ -59,5 +60,44 @@ describe("readPackageVersion", () => {
       version: string;
     };
     expect(readPackageVersion()).toBe(pkg.version);
+  });
+});
+
+describe("installShutdown", () => {
+  function harness() {
+    const target = new EventEmitter();
+    const exit = vi.fn();
+    const out = { write: vi.fn() } as unknown as NodeJS.WritableStream;
+    return { target, exit, out };
+  }
+
+  it("runs shutdown then exits 0 on SIGINT", async () => {
+    const { target, exit, out } = harness();
+    const shutdown = vi.fn().mockResolvedValue(undefined);
+    installShutdown(shutdown, { target, exit, out });
+
+    target.emit("SIGINT");
+    await vi.waitFor(() => expect(exit).toHaveBeenCalledWith(0));
+    expect(shutdown).toHaveBeenCalledOnce();
+  });
+
+  it("is idempotent — a second signal during teardown is ignored", async () => {
+    const { target, exit, out } = harness();
+    const shutdown = vi.fn().mockResolvedValue(undefined);
+    installShutdown(shutdown, { target, exit, out });
+
+    target.emit("SIGINT");
+    target.emit("SIGTERM");
+    await vi.waitFor(() => expect(exit).toHaveBeenCalled());
+    expect(shutdown).toHaveBeenCalledOnce();
+  });
+
+  it("exits 1 when shutdown fails", async () => {
+    const { target, exit, out } = harness();
+    const shutdown = vi.fn().mockRejectedValue(new Error("boom"));
+    installShutdown(shutdown, { target, exit, out });
+
+    target.emit("SIGTERM");
+    await vi.waitFor(() => expect(exit).toHaveBeenCalledWith(1));
   });
 });

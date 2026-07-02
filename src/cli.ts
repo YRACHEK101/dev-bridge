@@ -124,18 +124,36 @@ async function startAction(opts: StartCliOptions): Promise<void> {
     void openBrowser(dashboardUrl);
   }
 
+  installShutdown(() => handle.shutdown());
+}
+
+export interface ShutdownDeps {
+  /** Signal source (default: process). */
+  target?: NodeJS.EventEmitter;
+  /** Exit function (default: process.exit). */
+  exit?: (code: number) => void;
+  out?: NodeJS.WritableStream;
+}
+
+/**
+ * Wire SIGINT/SIGTERM to a graceful shutdown, then exit. Idempotent: repeated
+ * signals during teardown are ignored. Dependencies are injectable for testing.
+ */
+export function installShutdown(shutdown: () => Promise<void>, deps: ShutdownDeps = {}): void {
+  const target = deps.target ?? process;
+  const exit = deps.exit ?? ((code: number) => process.exit(code));
+  const out = deps.out ?? process.stdout;
   let shuttingDown = false;
   const onSignal = (signal: NodeJS.Signals): void => {
     if (shuttingDown) return;
     shuttingDown = true;
-    process.stdout.write(chalk.gray(`\nReceived ${signal}, shutting down...\n`));
-    handle
-      .shutdown()
-      .then(() => process.exit(0))
-      .catch(() => process.exit(1));
+    out.write(chalk.gray(`\nReceived ${signal}, shutting down...\n`));
+    shutdown()
+      .then(() => exit(0))
+      .catch(() => exit(1));
   };
-  process.on("SIGINT", () => onSignal("SIGINT"));
-  process.on("SIGTERM", () => onSignal("SIGTERM"));
+  target.on("SIGINT", () => onSignal("SIGINT"));
+  target.on("SIGTERM", () => onSignal("SIGTERM"));
 }
 
 interface InitCliOptions {

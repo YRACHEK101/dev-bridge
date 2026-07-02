@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PassThrough } from "node:stream";
 import {
   loadConfig,
   ConfigError,
@@ -142,5 +143,47 @@ describe("runInit", () => {
     const result = await runInit({ cwd: dir, yes: true });
     expect(result.written).toBe(false);
     expect(readFileSync(configPath, "utf8")).toBe(before);
+  });
+
+  // Returns a prompt function that replies with scripted answers in order.
+  function scripted(answers: string[]) {
+    let i = 0;
+    return async () => answers[i++] ?? "";
+  }
+
+  it("builds a config from interactive answers", async () => {
+    // Answers in prompt order: frontend command/port/cwd, backend command/port/cwd,
+    // proxy port, api prefix.
+    const prompt = scripted([
+      "vite",
+      "5001",
+      "./ui",
+      "node api.js",
+      "8080",
+      "./api",
+      "4321",
+      "/rest",
+    ]);
+
+    const result = await runInit({ cwd: dir, prompt });
+    expect(result.written).toBe(true);
+
+    const { config } = loadConfig({ configPath: result.configPath });
+    expect(config.frontend).toMatchObject({ command: "vite", port: 5001, cwd: "./ui" });
+    expect(config.backend).toMatchObject({ command: "node api.js", port: 8080, cwd: "./api" });
+    expect(config.proxy).toMatchObject({ port: 4321, apiPrefix: "/rest" });
+  });
+
+  it("re-prompts on an invalid port and keeps the rest", async () => {
+    const output = new PassThrough();
+    output.resume();
+    // frontend port invalid twice then valid (6001); every other field blank -> default.
+    const prompt = scripted(["", "notaport", "70000", "6001"]);
+
+    const result = await runInit({ cwd: dir, prompt, output });
+    const { config } = loadConfig({ configPath: result.configPath });
+    expect(config.frontend.port).toBe(6001);
+    expect(config.frontend.command).toBe(defaultConfig().frontend.command); // blank -> default
+    expect(config.proxy.apiPrefix).toBe(defaultConfig().proxy.apiPrefix); // ran out -> "" -> default
   });
 });
